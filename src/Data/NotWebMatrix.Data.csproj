@@ -42,6 +42,7 @@
     <Compile Include="Database.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DbParam.cs" />
     <Compile Include="DynamicRecord.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="IDatabaseOpener.cs">

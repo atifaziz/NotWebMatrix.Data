@@ -90,10 +90,14 @@ namespace NotWebMatrix.Data
             {
                 var parameters = args.Select((arg, index) =>
                 {
-                    DbParameter param = command.CreateParameter();
-                    param.ParameterName = index.ToString(CultureInfo.InvariantCulture);
-                    param.Value = arg ?? DBNull.Value;
-                    return param;
+                    var parameter = command.CreateParameter();
+                    parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
+                    var actor = arg as Action<IDbDataParameter>;
+                    if (actor != null)
+                        actor(parameter);
+                    else
+                        parameter.Value = arg ?? DBNull.Value;
+                    return parameter;
                 });
                 command.Parameters.AddRange(parameters.ToArray());
             }

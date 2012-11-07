@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>NotWebMatrix.Data</id>
+        <version>1.0.0</version>
+        <title>NotWebMatrix.Data</title>
+        <authors>Atif Aziz</authors>
+        <owners>Atif Aziz</owners>
+        <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+        <projectUrl>https://bitbucket.org/raboof/nwm</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Simple database access like in WebMatrix.Data.</description>
+        <copyright>Copyright (c) 2012, Atif Aziz. All rights reserved.</copyright>
+        <tags>ado data sql webmatrix</tags>
+    </metadata>
+    <files>
+        <file src="..\bin\Release\NotWebMatrix.Data.dll" target="lib\net40\NotWebMatrix.Data.dll" />
+        <file src="..\COPYING.txt" target="lib\COPYING.txt" />
+    </files>
+</package>

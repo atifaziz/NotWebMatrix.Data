@@ -73,36 +73,43 @@ namespace NotWebMatrix.Data
 
         public void Close() { Dispose(); }
 
-        DbCommand CreateConnectedCommand(string commandText, params object[] args)
+        public DbCommand Command(string commandText, params object[] args)
         {
             if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty("commandText");
-        
+
             if (Connection.State != ConnectionState.Open)
             {
                 Connection.Open();
                 OnConnectionOpened();
             }
-            
+
             var command = Connection.CreateCommand();
             command.CommandText = commandText;
-            
-            if (args != null)
-            {
-                var parameters = args.Select((arg, index) =>
-                {
-                    var parameter = command.CreateParameter();
-                    parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
-                    var actor = arg as Action<IDbDataParameter>;
-                    if (actor != null)
-                        actor(parameter);
-                    else
-                        parameter.Value = arg ?? DBNull.Value;
-                    return parameter;
-                });
-                command.Parameters.AddRange(parameters.ToArray());
-            }
-            
+            var parameters = CreateParameters(command.CreateParameter, args);
+            command.Parameters.AddRange(parameters.ToArray());
             return command;
+        }
+
+        static IEnumerable<T> CreateParameters<T>(Func<T> parameterFactory, IEnumerable<object> args)
+            where T : IDbDataParameter
+        {
+            return args == null
+                 ? Enumerable.Empty<T>()
+                 : from arg in args.Select((a, i) => new KeyValuePair<int, object>(i, a))
+                   select CreateParameter(parameterFactory, arg.Key, arg.Value);
+        }
+
+        static T CreateParameter<T>(Func<T> parameterFactory, int index, object value)
+            where T : IDbDataParameter
+        {
+            var parameter = parameterFactory();
+            parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
+            var actor = value as Action<IDbDataParameter>;
+            if (actor != null)
+                actor(parameter);
+            else
+                parameter.Value = value ?? DBNull.Value;
+            return parameter;
         }
 
         void OnConnectionOpened()
@@ -125,7 +132,7 @@ namespace NotWebMatrix.Data
 
         IEnumerable<DynamicRecord> QueryImpl(string commandText, params object[] args)
         {
-            using (var command = CreateConnectedCommand(commandText, args))
+            using (var command = Command(commandText, args))
             using (var reader = command.ExecuteReader())
             {
                 var columns = Enumerable.Range(0, reader.FieldCount)
@@ -140,13 +147,13 @@ namespace NotWebMatrix.Data
 
         public dynamic QueryValue(string commandText, params object[] args)
         {
-            using (var command = CreateConnectedCommand(commandText, args))
+            using (var command = Command(commandText, args))
                 return command.ExecuteScalar();
         }
 
         public int Execute(string commandText, params object[] args)
         {
-            using (var command = CreateConnectedCommand(commandText, args))
+            using (var command = Command(commandText, args))
                 return command.ExecuteNonQuery();
         }
 

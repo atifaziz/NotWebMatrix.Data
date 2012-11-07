@@ -1,4 +1,4 @@
-﻿#region License, Terms and Author(s)
+#region License, Terms and Author(s)
 //
 // NotWebMatrix
 // Copyright (c) 2012 Atif Aziz. All rights reserved.

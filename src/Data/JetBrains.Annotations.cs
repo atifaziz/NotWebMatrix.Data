@@ -1,4 +1,4 @@
-﻿#pragma warning disable 3016
+#pragma warning disable 3016
 
 using System;
 using System.Collections.Generic;

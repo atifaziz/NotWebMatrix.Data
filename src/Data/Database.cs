@@ -152,6 +152,23 @@ namespace NotWebMatrix.Data
                 return command.ExecuteScalar();
         }
 
+        public T QueryValue<T>(string commandText, params object[] args)
+        {
+            var value = (object) QueryValue(commandText, args);
+
+            if (Convert.IsDBNull(value))
+                return (T) (object) null;
+
+            var type = typeof(T);
+            var conversionType = type.IsGenericType
+                                 && !type.IsGenericTypeDefinition
+                                 && typeof(Nullable<>) == type.GetGenericTypeDefinition()
+                                 ? Nullable.GetUnderlyingType(type)
+                                 : type;
+
+            return (T) Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
+        }
+
         public int Execute(string commandText, params object[] args)
         {
             using (var command = Command(commandText, args))

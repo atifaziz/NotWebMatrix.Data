@@ -44,6 +44,7 @@
     </Compile>
     <Compile Include="DynamicRecord.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="JetBrains.Annotations.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

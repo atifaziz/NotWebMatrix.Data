@@ -52,14 +52,11 @@ namespace NotWebMatrix.Data
                     var message = string.Format(@"Invalid column name ""{0}"".", name);
                     throw new InvalidOperationException(message);
                 }
-                return DynamicRecord.GetValue(Record[name]);
+                return GetValue(Record[name]);
             }
         }
 
-        public object this[int index]
-        {
-            get { return DynamicRecord.GetValue(this.Record[index]); }
-        }
+        public object this[int index] { get { return GetValue(Record[index]); } }
 
         internal DynamicRecord(IList<string> columns, IDataRecord record)
         {
@@ -105,7 +102,7 @@ namespace NotWebMatrix.Data
                 from column in Columns
                 let ordinal = record.GetOrdinal(column)
                 let type = record.GetFieldType(ordinal)
-                select new DynamicRecord.DynamicPropertyDescriptor(column, type);
+                select new DynamicPropertyDescriptor(column, type);
             return new PropertyDescriptorCollection(properties.ToArray(), readOnly: true);
         }
 
@@ -124,8 +121,8 @@ namespace NotWebMatrix.Data
 
             public override object GetValue(object component)
             {
-                DynamicRecord record = component as DynamicRecord;
-                return record != null ? record[this.Name] : null;
+                var record = component as DynamicRecord;
+                return record != null ? record[Name] : null;
             }
 
             public override Type ComponentType { get { return typeof(DynamicRecord); } }

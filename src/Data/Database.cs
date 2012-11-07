@@ -303,7 +303,7 @@ namespace NotWebMatrix.Data
         {
             public static ArgumentException ArgumentNullOrEmpty(string paramName)
             {
-                return new ArgumentException(@"Value cannot be null or an empty string.");
+                return new ArgumentException(@"Value cannot be null or an empty string.", paramName);
             }
         }
     }

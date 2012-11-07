@@ -40,7 +40,7 @@ namespace NotWebMatrix.Data
 
     public class Database : IDisposable
     {
-        Func<DbConnection> _connectionFactory;
+        readonly Func<DbConnection> _connectionFactory;
         DbConnection _connection;
 
         public static Func<DbConnection, DbConnection> ConnectionDecorator { get; set; }

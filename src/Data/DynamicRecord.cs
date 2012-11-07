@@ -95,11 +95,10 @@ namespace NotWebMatrix.Data
         PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties()
         {
             var record = _record;
+            var columns = Columns;
             var properties =
-                from column in Columns
-                let ordinal = record.GetOrdinal(column)
-                let type = record.GetFieldType(ordinal)
-                select new DynamicPropertyDescriptor(column, type);
+                from i in Enumerable.Range(0, columns.Count)
+                select (PropertyDescriptor) new DynamicPropertyDescriptor(columns[i], record.GetFieldType(i));
             return new PropertyDescriptorCollection(properties.ToArray(), readOnly: true);
         }
 

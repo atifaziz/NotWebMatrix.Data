@@ -44,6 +44,9 @@
     </Compile>
     <Compile Include="DynamicRecord.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="IDatabaseOpener.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="JetBrains.Annotations.cs" />
   </ItemGroup>
   <ItemGroup>

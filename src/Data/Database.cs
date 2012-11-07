@@ -31,6 +31,7 @@ namespace NotWebMatrix.Data
     using System.IO;
     using System.Linq;
     using System.Threading;
+    using JetBrains.Annotations;
 
     #endregion
 
@@ -226,6 +227,39 @@ namespace NotWebMatrix.Data
         {
             var value = ConfigurationManager.AppSettings["NotWebMatrix.Data.Database.DefaultProvider"];
             return !string.IsNullOrWhiteSpace(value) ? value : "System.Data.SqlServerCe.4.0";
+        }
+
+        sealed class DatabaseOpener : IDatabaseOpener
+        {
+            readonly Func<Database> _opener;
+
+            public DatabaseOpener([NotNull] Func<Database> opener)
+            {
+                Debug.Assert(opener != null);
+                _opener = opener;
+            }
+
+            public Database Open() { return _opener(); }
+        }
+
+        public static IDatabaseOpener Opener(string name)
+        {
+            return new DatabaseOpener(() => Open(name));
+        }
+
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString)
+        {
+            return new DatabaseOpener(() => OpenConnectionString(connectionString));
+        }
+
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName)
+        {
+            return new DatabaseOpener(() => OpenConnectionString(connectionString, providerName));
+        }
+
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory)
+        {
+            return new DatabaseOpener(() => OpenConnectionString(connectionString, providerFactory));
         }
 
         static class Exceptions

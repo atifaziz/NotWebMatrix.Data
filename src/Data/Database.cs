@@ -50,6 +50,7 @@ namespace NotWebMatrix.Data
 
         Database(Func<DbConnection> connectionFactory)
         {
+            Debug.Assert(connectionFactory != null);
             _connectionFactory = connectionFactory;
         }
 
@@ -92,6 +93,7 @@ namespace NotWebMatrix.Data
         static IEnumerable<T> CreateParameters<T>(Func<T> parameterFactory, IEnumerable<object> args)
             where T : IDbDataParameter
         {
+            Debug.Assert(parameterFactory != null);
             return args == null
                  ? Enumerable.Empty<T>()
                  : from arg in args.Select((a, i) => new KeyValuePair<int, object>(i, a))
@@ -101,6 +103,7 @@ namespace NotWebMatrix.Data
         static T CreateParameter<T>(Func<T> parameterFactory, int index, object value)
             where T : IDbDataParameter
         {
+            Debug.Assert(parameterFactory != null);
             var parameter = parameterFactory();
             parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
             var actor = value as Action<IDbDataParameter>;
@@ -218,7 +221,10 @@ namespace NotWebMatrix.Data
             return new Database(() =>
             {
                 if (providerFactory == null)
+                {
+                    Debug.Assert(providerName != null);
                     providerFactory = DbProviderFactories.GetFactory(providerName);
+                }
 
                 var connection = providerFactory.CreateConnection();
                 if (connection == null)
@@ -229,8 +235,10 @@ namespace NotWebMatrix.Data
             });
         }
 
+        [NotNull]
         public static readonly Func<string, ConnectionStringSettings> DefaultNamedConnectionStringResolver = name => ConfigurationManager.ConnectionStrings[name];
 
+        [NotNull] 
         public static Func<string, ConnectionStringSettings> NamedConnectionStringResolver
         {
             get { return _namedConnectionStringResolver ?? DefaultNamedConnectionStringResolver; }

@@ -42,10 +42,11 @@ namespace NotWebMatrix.Data
 
     public class Database : IDisposable
     {
-        static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
-
         Func<DbConnection> _connectionFactory;
         DbConnection _connection;
+
+        public static Func<DbConnection, DbConnection> ConnectionDecorator { get; set; }
+        static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
         public static event EventHandler<ConnectionEventArgs> ConnectionOpened;
 
@@ -187,6 +188,8 @@ namespace NotWebMatrix.Data
         {
             if (string.IsNullOrEmpty(connectionString)) throw Exceptions.ArgumentNullOrEmpty("connectionString");
 
+            var decorator = ConnectionDecorator ?? (connection => connection);
+
             if (providerFactory == null)
             {
                 if (string.IsNullOrEmpty(providerName))
@@ -207,7 +210,7 @@ namespace NotWebMatrix.Data
                     throw new NullReferenceException(string.Format("{0} returned a connection reference not set to an instance.", providerFactory.GetType()));
 
                 connection.ConnectionString = connectionString;
-                return connection;
+                return decorator(connection);
             });
         }
 

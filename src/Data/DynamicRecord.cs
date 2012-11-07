@@ -39,9 +39,19 @@ namespace NotWebMatrix.Data
 
     public sealed class DynamicRecord : DynamicObject, ICustomTypeDescriptor
     {
-        IDataRecord Record { get; set; }
-
+        readonly IDataRecord _record;
+        
         public IList<string> Columns { get; private set; }
+
+        internal DynamicRecord(IList<string> columns, IDataRecord record)
+        {
+            Debug.Assert(columns != null);
+            Debug.Assert(columns.IsReadOnly);
+            Debug.Assert(record != null);
+
+            Columns = columns;
+            _record = record;
+        }
 
         public object this[string name]
         {
@@ -52,31 +62,18 @@ namespace NotWebMatrix.Data
                     var message = string.Format(@"Invalid column name ""{0}"".", name);
                     throw new InvalidOperationException(message);
                 }
-                return GetValue(Record[name]);
+                return GetValue(_record[name]);
             }
         }
 
-        public object this[int index] { get { return GetValue(Record[index]); } }
+        public object this[int index] { get { return GetValue(_record[index]); } }
 
-        internal DynamicRecord(IList<string> columns, IDataRecord record)
-        {
-            Debug.Assert(columns != null);
-            Debug.Assert(columns.IsReadOnly);
-            Debug.Assert(record != null);
-
-            Columns = columns;
-            Record = record;
-        }
+        static object GetValue(object value) { return !Convert.IsDBNull(value) ? value : null; }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
             result = this[binder.Name];
             return true;
-        }
-
-        static object GetValue(object value)
-        {
-            return DBNull.Value != value ? value : null;
         }
 
         public override IEnumerable<string> GetDynamicMemberNames() { return Columns; }
@@ -97,7 +94,7 @@ namespace NotWebMatrix.Data
 
         PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties()
         {
-            var record = Record;
+            var record = _record;
             var properties =
                 from column in Columns
                 let ordinal = record.GetOrdinal(column)

@@ -26,6 +26,7 @@ namespace NotWebMatrix.Data
     using System.Configuration;
     using System.Data;
     using System.Data.Common;
+    using System.Diagnostics;
     using System.Globalization;
     using System.IO;
     using System.Linq;
@@ -149,31 +150,40 @@ namespace NotWebMatrix.Data
             return QueryValue("SELECT @@Identity");
         }
 
+        public static Database Open(string name)
+        {
+            if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty("name");
+            return Database.OpenNamedConnection(name);
+        }
+
         public static Database OpenConnectionString(string connectionString)
         {
-            return Database.OpenConnectionString(connectionString, null);
+            return Database.OpenConnectionString(connectionString, (DbProviderFactory) null);
         }
 
         public static Database OpenConnectionString(string connectionString, string providerName)
         {
-            if (string.IsNullOrEmpty(connectionString))
-                throw Exceptions.ArgumentNullOrEmpty("connectionString");
-            return Database.OpenConnectionStringInternal(providerName, connectionString);
+            return Database.OpenConnectionStringImpl(providerName, null, connectionString);
         }
 
-        public static Database Open(string name)
+        public static Database OpenConnectionString(string connectionString, DbProviderFactory providerFactory)
         {
-            if (string.IsNullOrEmpty(name))
-                throw Exceptions.ArgumentNullOrEmpty("name");
-            return Database.OpenNamedConnection(name);
+            return Database.OpenConnectionStringImpl(null, providerFactory, connectionString);
         }
 
-        static Database OpenConnectionStringInternal(string providerName, string connectionString)
+        static Database OpenConnectionStringImpl(string providerName, DbProviderFactory providerFactory, string connectionString)
         {
-            if (string.IsNullOrEmpty(providerName))
-                providerName = GetDefaultProviderName();
+            if (string.IsNullOrEmpty(connectionString)) throw Exceptions.ArgumentNullOrEmpty("connectionString");
 
-            DbProviderFactory providerFactory = null;
+            if (providerFactory == null)
+            {
+                if (string.IsNullOrEmpty(providerName))
+                    providerName = GetDefaultProviderName();
+            }
+            else
+            {
+                Debug.Assert(string.IsNullOrEmpty(providerName), @"Specify either provider factory or name but not both.");
+            }
 
             return new Database(() =>
             {
@@ -209,7 +219,7 @@ namespace NotWebMatrix.Data
                 var message = string.Format(@"Connection string ""{0}"" was not found.", name);
                 throw new InvalidOperationException(message);
             }
-            return OpenConnectionStringInternal(connectionStringSettings.ProviderName, connectionStringSettings.ConnectionString);
+            return OpenConnectionStringImpl(connectionStringSettings.ProviderName, null, connectionStringSettings.ConnectionString);
         }
 
         static string GetDefaultProviderName()

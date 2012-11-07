@@ -1,0 +1,12 @@
+bin/
+*.dll
+*.pdb
+*.user
+*.cache
+*.docstates
+*.suo
+obj/
+_ReSharper.*
+dist/
+pkg/base/
+*.nupkg

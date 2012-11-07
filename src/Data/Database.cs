@@ -181,22 +181,22 @@ namespace NotWebMatrix.Data
         public static Database Open(string name)
         {
             if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty("name");
-            return Database.OpenNamedConnection(name);
+            return OpenNamedConnection(name);
         }
 
         public static Database OpenConnectionString(string connectionString)
         {
-            return Database.OpenConnectionString(connectionString, (DbProviderFactory) null);
+            return OpenConnectionString(connectionString, (DbProviderFactory) null);
         }
 
         public static Database OpenConnectionString(string connectionString, string providerName)
         {
-            return Database.OpenConnectionStringImpl(providerName, null, connectionString);
+            return OpenConnectionStringImpl(providerName, null, connectionString);
         }
 
         public static Database OpenConnectionString(string connectionString, DbProviderFactory providerFactory)
         {
-            return Database.OpenConnectionStringImpl(null, providerFactory, connectionString);
+            return OpenConnectionStringImpl(null, providerFactory, connectionString);
         }
 
         static Database OpenConnectionStringImpl(string providerName, DbProviderFactory providerFactory, string connectionString)

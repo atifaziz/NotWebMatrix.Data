@@ -137,7 +137,7 @@ namespace NotWebMatrix.Data
             using (var reader = command.ExecuteReader())
             {
                 var columns = Enumerable.Range(0, reader.FieldCount)
-                                        .Select(i => reader.GetName(i))
+                                        .Select(reader.GetName)
                                         .ToList()
                                         .AsReadOnly();
 

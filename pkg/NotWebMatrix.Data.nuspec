@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>NotWebMatrix.Data</id>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
         <title>NotWebMatrix.Data</title>
         <authors>Atif Aziz</authors>
         <owners>Atif Aziz</owners>
@@ -15,6 +15,6 @@
     </metadata>
     <files>
         <file src="..\bin\Release\NotWebMatrix.Data.dll" target="lib\net40\NotWebMatrix.Data.dll" />
-        <file src="..\COPYING.txt" target="lib\COPYING.txt" />
+        <file src="..\COPYING.txt" target="COPYING.txt" />
     </files>
 </package>

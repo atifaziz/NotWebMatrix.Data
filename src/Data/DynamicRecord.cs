@@ -37,6 +37,7 @@ namespace NotWebMatrix.Data
     /// capabilities of the Dynamic Language Runtime (DLR).
     /// </summary>
 
+    [Obsolete]
     public sealed class DynamicRecord : DynamicObject, ICustomTypeDescriptor
     {
         readonly IDataRecord _record;

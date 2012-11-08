@@ -10,3 +10,6 @@ _ReSharper.*
 dist/
 pkg/base/
 *.nupkg
+packages/
+.nuget/NuGet.exe
+.nuget/nuget.exe

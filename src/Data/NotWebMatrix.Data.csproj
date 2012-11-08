@@ -11,6 +11,8 @@
     <AssemblyName>NotWebMatrix.Data</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Eggado">
+      <HintPath>..\..\packages\Eggado.0.9.14320\lib\net40\Eggado.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
@@ -43,8 +48,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DbParam.cs" />
-    <Compile Include="DynamicRecord.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="DynamicRecord.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="IDatabaseOpener.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -53,7 +60,11 @@
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

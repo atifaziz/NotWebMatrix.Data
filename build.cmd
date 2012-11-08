@@ -7,6 +7,7 @@ if not exist "%MSBUILDEXE%" (
     echo machine, which is required to build the solution.
     exit /b 1
 )
+set EnableNuGetPackageRestore=true
 for %%s in (*.sln) do (
     for %%c in (debug release) do "%MSBUILDEXE%" %%s /p:Configuration=%%c %*
 )

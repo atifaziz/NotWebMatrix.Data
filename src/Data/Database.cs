@@ -29,6 +29,7 @@ namespace NotWebMatrix.Data
     using System.Diagnostics;
     using System.Globalization;
     using System.Linq;
+    using Eggado;
     using JetBrains.Annotations;
 
     #endregion
@@ -157,22 +158,21 @@ namespace NotWebMatrix.Data
             return QueryImpl(options, commandText, args).FirstOrDefault();
         }
 
-        IEnumerable<DynamicRecord> QueryImpl(QueryOptions options, string commandText, params object[] args)
+        IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args)
         {
+            return QueryImpl(options, commandText, args, r => r.Select());
+        }
+        
+        IEnumerable<T> QueryImpl<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
+        {
+            Debug.Assert(selector != null);
+
             using (var command = Command(options, commandText, args))
             using (var reader = command.ExecuteReader())
             {
-                var columns = Enumerable.Range(0, reader.FieldCount)
-                                        .Select(reader.GetName)
-                                        .ToList()
-                                        .AsReadOnly();
-
-                var items = from DbDataRecord record in reader
-                            select new DynamicRecord(columns, record);
-
-                if (options == null || !options.Unbuffered)
+                var items = Eggnumerable.From(command.ExecuteReader, selector);
+                if (options != null && !options.Unbuffered)
                     items = items.ToList().AsReadOnly();
-
                 foreach (var item in items)
                     yield return item;
             }

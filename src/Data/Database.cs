@@ -122,17 +122,29 @@ namespace NotWebMatrix.Data
             handler(this, new ConnectionEventArgs(Connection));
         }
 
+        [Serializable]
+        public class QueryOptions
+        {
+            public bool Unbuffered { get; set; }
+        }
+
         public IEnumerable<dynamic> Query(string commandText, params object[] args)
         {
-            return QueryImpl(commandText, args).ToList().AsReadOnly();
+            return Query(null, commandText, args);
+        }
+
+        public IEnumerable<dynamic> Query(QueryOptions options, string commandText, params object[] args)
+        {
+            return QueryImpl(options, commandText, args);
         }
 
         public dynamic QuerySingle(string commandText, params object[] args)
         {
-            return QueryImpl(commandText, args).FirstOrDefault();
+            var options = new QueryOptions { Unbuffered = true };
+            return QueryImpl(options, commandText, args).FirstOrDefault();
         }
 
-        IEnumerable<DynamicRecord> QueryImpl(string commandText, params object[] args)
+        IEnumerable<DynamicRecord> QueryImpl(QueryOptions options, string commandText, params object[] args)
         {
             using (var command = Command(commandText, args))
             using (var reader = command.ExecuteReader())
@@ -142,8 +154,14 @@ namespace NotWebMatrix.Data
                                         .ToList()
                                         .AsReadOnly();
 
-                foreach (DbDataRecord record in reader)
-                    yield return new DynamicRecord(columns, record);
+                var items = from DbDataRecord record in reader
+                            select new DynamicRecord(columns, record);
+
+                if (options == null || !options.Unbuffered)
+                    items = items.ToList().AsReadOnly();
+
+                foreach (var item in items)
+                    yield return item;
             }
         }
 

@@ -178,7 +178,6 @@ namespace NotWebMatrix.Data
             Debug.Assert(selector != null);
 
             using (var command = Command(options, commandText, args))
-            using (var reader = command.ExecuteReader())
             {
                 var items = Eggnumerable.From(command.ExecuteReader, selector);
                 if (options != null && !options.Unbuffered)

@@ -73,7 +73,18 @@ namespace NotWebMatrix.Data
 
         public void Close() { Dispose(); }
 
+        [Serializable]
+        public class CommandOptions
+        {
+            public TimeSpan? CommandTimeout { get; set; }
+        }
+
         public DbCommand Command(string commandText, params object[] args)
+        {
+            return Command(null, commandText, args);
+        }
+
+        public DbCommand Command(CommandOptions options, string commandText, params object[] args)
         {
             if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty("commandText");
 
@@ -85,6 +96,8 @@ namespace NotWebMatrix.Data
 
             var command = Connection.CreateCommand();
             command.CommandText = commandText;
+            if (options != null && options.CommandTimeout != null)
+                command.CommandTimeout = (int) options.CommandTimeout.Value.TotalSeconds;
             var parameters = CreateParameters(command.CreateParameter, args);
             command.Parameters.AddRange(parameters.ToArray());
             return command;
@@ -123,7 +136,7 @@ namespace NotWebMatrix.Data
         }
 
         [Serializable]
-        public class QueryOptions
+        public class QueryOptions : CommandOptions
         {
             public bool Unbuffered { get; set; }
         }
@@ -146,7 +159,7 @@ namespace NotWebMatrix.Data
 
         IEnumerable<DynamicRecord> QueryImpl(QueryOptions options, string commandText, params object[] args)
         {
-            using (var command = Command(commandText, args))
+            using (var command = Command(options, commandText, args))
             using (var reader = command.ExecuteReader())
             {
                 var columns = Enumerable.Range(0, reader.FieldCount)
@@ -167,13 +180,23 @@ namespace NotWebMatrix.Data
 
         public dynamic QueryValue(string commandText, params object[] args)
         {
-            using (var command = Command(commandText, args))
+            return QueryValue(null, commandText, args);
+        }
+
+        public dynamic QueryValue(CommandOptions options, string commandText, params object[] args)
+        {
+            using (var command = Command(options, commandText, args))
                 return command.ExecuteScalar();
         }
 
         public T QueryValue<T>(string commandText, params object[] args)
         {
-            var value = (object) QueryValue(commandText, args);
+            return QueryValue<T>(null, commandText, args);
+        }
+
+        public T QueryValue<T>(CommandOptions options, string commandText, params object[] args)
+        {
+            var value = (object) QueryValue(options, commandText, args);
 
             if (Convert.IsDBNull(value))
                 return (T) (object) null;
@@ -188,9 +211,14 @@ namespace NotWebMatrix.Data
             return (T) Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-        public int Execute(string commandText, params object[] args)
+        public int Execute(string commandText, params object[] args) 
         {
-            using (var command = Command(commandText, args))
+            return Execute(null, commandText, args);
+        }
+
+        public int Execute(CommandOptions options, string commandText, params object[] args)
+        {
+            using (var command = Command(options, commandText, args))
                 return command.ExecuteNonQuery();
         }
 

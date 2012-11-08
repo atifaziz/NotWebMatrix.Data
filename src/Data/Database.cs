@@ -158,6 +158,16 @@ namespace NotWebMatrix.Data
             return QueryImpl(options, commandText, args).FirstOrDefault();
         }
 
+        public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args)
+        {
+            return QueryRecords(null, commandText, args);
+        }
+
+        public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args)
+        {
+            return QueryImpl(options, commandText, args, r => r.SelectRecords());
+        }
+
         IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args)
         {
             return QueryImpl(options, commandText, args, r => r.Select());

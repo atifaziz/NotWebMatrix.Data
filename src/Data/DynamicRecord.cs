@@ -22,13 +22,14 @@ namespace NotWebMatrix.Data
     #region Imports
 
     using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Data;
-    using System.Diagnostics;
-    using System.Dynamic;
-    using System.Globalization;
-    using System.Linq;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Dynamic;
+using System.Globalization;
+using System.Linq;
 
     #endregion
 
@@ -41,35 +42,32 @@ namespace NotWebMatrix.Data
     public sealed class DynamicRecord : DynamicObject, ICustomTypeDescriptor
     {
         readonly IDataRecord _record;
+        ReadOnlyCollection<string> _columns;
         
-        public IList<string> Columns { get; private set; }
-
-        internal DynamicRecord(IList<string> columns, IDataRecord record)
+        public DynamicRecord(IDataRecord record)
         {
-            Debug.Assert(columns != null);
-            Debug.Assert(columns.IsReadOnly);
-            Debug.Assert(record != null);
-
-            Columns = columns;
+            if (record == null) throw new ArgumentNullException("record");
             _record = record;
         }
 
-        public object this[string name]
-        {
-            get
-            {
-                if (!Columns.Contains(name, StringComparer.OrdinalIgnoreCase))
-                {
-                    var message = string.Format(@"Invalid column name ""{0}"".", name);
-                    throw new InvalidOperationException(message);
-                }
-                return GetValue(_record[name]);
-            }
-        }
-
+        public object this[string name] { get { return GetValue(_record[name]); } }
         public object this[int index] { get { return GetValue(_record[index]); } }
-
         static object GetValue(object value) { return !Convert.IsDBNull(value) ? value : null; }
+
+        public IList<string> Columns 
+        { 
+            get 
+            {
+                if (_columns == null)
+                {
+                    var record = _record;
+                    var names = from i in Enumerable.Range(0, record.FieldCount)
+                                select record.GetName(i);
+                    _columns = Array.AsReadOnly(names.ToArray());
+                }
+                return _columns;
+            } 
+        }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {

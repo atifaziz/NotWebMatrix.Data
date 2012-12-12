@@ -48,6 +48,24 @@ namespace NotWebMatrix.Data
         static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
         public static event EventHandler<ConnectionEventArgs> ConnectionOpened;
+        static event EventHandler<CommandEventArgs> GlobalCommandCreated;
+        
+        public static class GlobalEvents
+        {    
+            public static event EventHandler<ConnectionEventArgs> ConnectionOpened
+            {
+                add { Database.ConnectionOpened += value; }
+                remove { Database.ConnectionOpened -= value; }
+            }
+
+            public static event EventHandler<CommandEventArgs> CommandCreated
+            {
+                add { GlobalCommandCreated += value; }
+                remove { GlobalCommandCreated -= value; }
+            }
+        }
+
+        public event EventHandler<CommandEventArgs> CommandCreated;
 
         Database(Func<DbConnection> connectionFactory)
         {
@@ -101,6 +119,7 @@ namespace NotWebMatrix.Data
                 command.CommandTimeout = (int) options.CommandTimeout.Value.TotalSeconds;
             var parameters = CreateParameters(command.CreateParameter, args);
             command.Parameters.AddRange(parameters.ToArray());
+            OnCommandCreated(new CommandEventArgs(command));
             return command;
         }
 
@@ -126,6 +145,19 @@ namespace NotWebMatrix.Data
             else
                 parameter.Value = value ?? DBNull.Value;
             return parameter;
+        }
+
+        void OnCommandCreated(CommandEventArgs args)
+        {
+            OnCommandEvent(CommandCreated, args);
+            OnCommandEvent(GlobalCommandCreated, args);
+        }
+
+        void OnCommandEvent(EventHandler<CommandEventArgs> handler, CommandEventArgs args)
+        {
+            if (handler == null)
+                return;
+            handler(this, args);
         }
 
         void OnConnectionOpened()

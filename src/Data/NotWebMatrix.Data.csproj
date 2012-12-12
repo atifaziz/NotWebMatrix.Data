@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectionEventArgs.cs" />
+    <Compile Include="CommandEventArgs.cs" />
     <Compile Include="Database.cs">
       <SubType>Code</SubType>
     </Compile>

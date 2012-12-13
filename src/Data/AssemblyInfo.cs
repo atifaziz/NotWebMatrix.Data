@@ -40,8 +40,8 @@ using ComVisible = System.Runtime.InteropServices.ComVisibleAttribute;
 // Version information
 //
 
-[assembly: AssemblyVersion("1.1.15512.0")]
-[assembly: AssemblyFileVersion("1.1.15512.1454")]
+[assembly: AssemblyVersion("1.2.15513.0")]
+[assembly: AssemblyFileVersion("1.2.15513.731")]
 
 //
 // Configuration (test, debug, release)

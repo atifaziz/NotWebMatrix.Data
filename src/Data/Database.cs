@@ -52,7 +52,8 @@ namespace NotWebMatrix.Data
         
         public static class GlobalEvents
         {    
-            public static event EventHandler<ConnectionEventArgs> ConnectionOpened
+            // ReSharper disable MemberHidesStaticFromOuterClass
+            public static event EventHandler<ConnectionEventArgs> ConnectionOpened // ReSharper restore MemberHidesStaticFromOuterClass
             {
                 add { Database.ConnectionOpened += value; }
                 remove { Database.ConnectionOpened -= value; }

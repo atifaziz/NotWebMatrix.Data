@@ -19,8 +19,13 @@
 
 namespace NotWebMatrix.Data
 {
+    #region Imports
+
     using System;
     using System.Data;
+    using System.Linq;
+
+    #endregion
 
     public static class DbParam
     {
@@ -40,6 +45,25 @@ namespace NotWebMatrix.Data
             return DbType(System.Data.DbType.AnsiString)
                  + Value(value)
                  + (size != null ? Size(size.Value) : null);
+        }
+
+        public static Action<IDbDataParameter> Specific<T>(Action<T> action) 
+            where T : IDbDataParameter
+        {
+            if (action == null) throw new ArgumentNullException("action");
+            return p => action((T) p);
+        }
+
+        public static Action<IDbDataParameter> Specific<T>(params Action<T>[] actions) 
+            where T : IDbDataParameter 
+        {  
+            if (actions == null) throw new ArgumentNullException("actions");
+
+            actions = actions.Length > 0 
+                    ? actions 
+                    : new Action<T>[] { delegate {} };
+
+            return Specific(actions.Aggregate((acc, a) => acc += a));
         }
     }
 }

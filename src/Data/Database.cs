@@ -213,8 +213,8 @@ namespace NotWebMatrix.Data
             using (var command = Command(options, commandText, args))
             {
                 var items = Eggnumerable.From(command.ExecuteReader, selector);
-                if (options != null && !options.Unbuffered)
-                    items = items.ToList().AsReadOnly();
+                if (options == null || !options.Unbuffered)
+                    items = items.ToList();
                 foreach (var item in items)
                     yield return item;
             }

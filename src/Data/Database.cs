@@ -106,7 +106,7 @@ namespace NotWebMatrix.Data
 
         public DbCommand Command(CommandOptions options, string commandText, params object[] args)
         {
-            if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty("commandText");
+            ValidatingCommandText(commandText);
 
             if (Connection.State != ConnectionState.Open)
             {
@@ -122,6 +122,12 @@ namespace NotWebMatrix.Data
             command.Parameters.AddRange(parameters.ToArray());
             OnCommandCreated(new CommandEventArgs(command));
             return command;
+        }
+
+        static string ValidatingCommandText(string commandText)
+        {
+            if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty("commandText");
+            return commandText;
         }
 
         static IEnumerable<T> CreateParameters<T>(Func<T> parameterFactory, IEnumerable<object> args)
@@ -198,14 +204,23 @@ namespace NotWebMatrix.Data
 
         public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args)
         {
-            return QueryImpl(options, commandText, args, r => r.SelectRecords());
+            return Query(options, commandText, args, r => r.SelectRecords());
         }
 
         IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args)
         {
-            return QueryImpl(options, commandText, args, r => r.Select());
+            return Query(options, commandText, args, r => r.Select());
         }
-        
+
+        IEnumerable<T> Query<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
+        {
+            Debug.Assert(selector != null);
+            var items = QueryImpl(options, ValidatingCommandText(commandText), args, selector);
+            return options == null || !options.Unbuffered 
+                 ? items.ToList().AsReadOnly() 
+                 : items;
+        }
+
         IEnumerable<T> QueryImpl<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
         {
             Debug.Assert(selector != null);
@@ -213,8 +228,6 @@ namespace NotWebMatrix.Data
             using (var command = Command(options, commandText, args))
             {
                 var items = Eggnumerable.From(command.ExecuteReader, selector);
-                if (options == null || !options.Unbuffered)
-                    items = items.ToList();
                 foreach (var item in items)
                     yield return item;
             }

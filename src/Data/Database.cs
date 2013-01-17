@@ -217,7 +217,7 @@ namespace NotWebMatrix.Data
             Debug.Assert(selector != null);
             var items = QueryImpl(options, ValidatingCommandText(commandText), args, selector);
             return options == null || !options.Unbuffered 
-                 ? items.ToList().AsReadOnly() 
+                 ? Array.AsReadOnly(items.ToArray())
                  : items;
         }
 

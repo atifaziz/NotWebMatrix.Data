@@ -79,7 +79,7 @@ namespace NotWebMatrix.Data
                     ? actions 
                     : new Action<T>[] { delegate {} };
 
-            return Specific(actions.Aggregate((acc, a) => acc += a));
+            return Specific(actions.Aggregate((acc, a) => acc + a));
         }
     }
 }

@@ -29,21 +29,37 @@ namespace NotWebMatrix.Data
 
     public static class DbParam
     {
+        static readonly Action<IDbDataParameter> Nop = delegate {};
+
         public static Action<IDbDataParameter> DbType(DbType value)  { return p => p.DbType = value;    }
         public static Action<IDbDataParameter> Size(int value)       { return p => p.Size = value;      }
         public static Action<IDbDataParameter> Precision(byte value) { return p => p.Precision = value; }
         public static Action<IDbDataParameter> Scale(byte value)     { return p => p.Scale = value;     }
         public static Action<IDbDataParameter> Value(object value)   { return p => p.Value = value;     }
 
-        public static Action<IDbDataParameter> AnsiString(string value)
+        public static Action<IDbDataParameter> Name(string value)
         {
-            return AnsiString(value, null);
+            return !string.IsNullOrEmpty(value) ? (p => p.ParameterName = value) : Nop;
         }
 
-        public static Action<IDbDataParameter> AnsiString(string value, int? size)
+        public static Action<IDbDataParameter> Value(DbType dbType, object value) { return Value(null, dbType, value); }
+        public static Action<IDbDataParameter> Value(string name, object value)   { return Value(name, null, value);   }
+
+        public static Action<IDbDataParameter> Value(string name, DbType? dbType, object value)
+        {
+            return Name(name)
+                 + (dbType != null ? DbType(dbType.Value) : null)
+                 + Value(value);
+        }
+
+        public static Action<IDbDataParameter> AnsiString(string value)              { return AnsiString(null, value);       }
+        public static Action<IDbDataParameter> AnsiString(string name, string value) { return AnsiString(name, value, null); }
+        public static Action<IDbDataParameter> AnsiString(string value, int size)    { return AnsiString(null, value, size); }
+
+        public static Action<IDbDataParameter> AnsiString(string name, string value, int? size)
         {
             return DbType(System.Data.DbType.AnsiString)
-                 + Value(value)
+                 + Value(name, value)
                  + (size != null ? Size(size.Value) : null);
         }
 

@@ -19,6 +19,8 @@
     </metadata>
     <files>
         <file src="..\bin\Release\NotWebMatrix.Data.dll" target="lib\net40\NotWebMatrix.Data.dll" />
+        <file src="..\bin\Release\NotWebMatrix.Data.pdb" target="lib\net40\NotWebMatrix.Data.pdb" />
         <file src="..\COPYING.txt" target="COPYING.txt" />
+        <file src="..\src\**\*.cs" target="src" />
     </files>
 </package>

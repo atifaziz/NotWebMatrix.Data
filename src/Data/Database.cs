@@ -17,6 +17,9 @@
 //
 #endregion
 
+using System.Reflection;
+using Mannex;
+
 namespace NotWebMatrix.Data
 {
     #region Imports
@@ -253,7 +256,7 @@ namespace NotWebMatrix.Data
         {
             var value = (object) QueryValue(options, commandText, args);
 
-            if (Convert.IsDBNull(value))
+            if (value == null || Convert.IsDBNull(value))
                 return (T) (object) null;
 
             var type = typeof(T);

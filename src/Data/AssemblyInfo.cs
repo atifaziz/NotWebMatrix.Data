@@ -44,11 +44,11 @@ using ComVisible = System.Runtime.InteropServices.ComVisibleAttribute;
 #if !DEBUG
 #warning Test builds should be compiled using the DEBUG configuration.
 #endif
-    [assembly: AssemblyConfiguration("Test")]
+[assembly: AssemblyConfiguration("Test")]
 #elif DEBUG
 [assembly: AssemblyConfiguration("Debug")]
 #else
-    [assembly: AssemblyConfiguration("Release")]
+[assembly: AssemblyConfiguration("Release")]
 #endif
 
 //

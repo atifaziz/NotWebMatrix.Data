@@ -31,8 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Eggado">
-      <HintPath>..\..\packages\Eggado.0.9.14320\lib\net40\Eggado.dll</HintPath>
+    <Reference Include="Eggado, Version=1.0.18429.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Eggado.1.0\lib\net40\Eggado.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />

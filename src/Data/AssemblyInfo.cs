@@ -37,13 +37,6 @@ using ComVisible = System.Runtime.InteropServices.ComVisibleAttribute;
 [assembly: AssemblyCulture("")]
 
 //
-// Version information
-//
-
-[assembly: AssemblyVersion("1.3.15727.0")]
-[assembly: AssemblyFileVersion("1.3.16022.1216")]
-
-//
 // Configuration (test, debug, release)
 //
 

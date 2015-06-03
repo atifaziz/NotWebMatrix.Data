@@ -33,7 +33,7 @@ using ComVisible = System.Runtime.InteropServices.ComVisibleAttribute;
 [assembly: AssemblyDescription("NotWebMatrix Data Access Library")]
 [assembly: AssemblyProduct("NotWebMatrix")]
 [assembly: AssemblyCompany("http://www.raboof.com")]
-[assembly: AssemblyCopyright("Copyright (c) 2012, Atif Aziz. All rights reserved.")]
+[assembly: AssemblyCopyright("Copyright \xa9 2012, Atif Aziz. All rights reserved.")]
 [assembly: AssemblyCulture("")]
 
 //

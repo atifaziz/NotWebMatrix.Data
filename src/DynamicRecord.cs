@@ -42,15 +42,12 @@ namespace NotWebMatrix.Data
         readonly IDataRecord _record;
         ReadOnlyCollection<string> _columns;
 
-        public DynamicRecord(IDataRecord record)
-        {
-            if (record == null) throw new ArgumentNullException("record");
-            _record = record;
-        }
+        public DynamicRecord(IDataRecord record) =>
+            _record = record ?? throw new ArgumentNullException(nameof(record));
 
-        public object this[string name] { get { return GetValue(_record[name]); } }
-        public object this[int index] { get { return GetValue(_record[index]); } }
-        static object GetValue(object value) { return !Convert.IsDBNull(value) ? value : null; }
+        public object this[string name]      => GetValue(_record[name]);
+        public object this[int index]        => GetValue(_record[index]);
+        static object GetValue(object value) => !Convert.IsDBNull(value) ? value : null;
 
         public IList<string> Columns
         {
@@ -77,17 +74,17 @@ namespace NotWebMatrix.Data
 
         #region ICustomTypeDescriptor
 
-        AttributeCollection ICustomTypeDescriptor.GetAttributes() { return AttributeCollection.Empty; }
-        string ICustomTypeDescriptor.GetClassName() { return null; }
-        string ICustomTypeDescriptor.GetComponentName() { return null; }
-        TypeConverter ICustomTypeDescriptor.GetConverter() { return null; }
-        EventDescriptor ICustomTypeDescriptor.GetDefaultEvent() { return null; }
-        PropertyDescriptor ICustomTypeDescriptor.GetDefaultProperty() { return null; }
-        object ICustomTypeDescriptor.GetEditor(Type editorBaseType) { return null; }
-        EventDescriptorCollection ICustomTypeDescriptor.GetEvents(Attribute[] attributes) { return EventDescriptorCollection.Empty; }
-        EventDescriptorCollection ICustomTypeDescriptor.GetEvents() { return EventDescriptorCollection.Empty; }
-        PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties(Attribute[] attributes) { return ((ICustomTypeDescriptor)this).GetProperties(); }
-        object ICustomTypeDescriptor.GetPropertyOwner(PropertyDescriptor pd) { return this; }
+        AttributeCollection ICustomTypeDescriptor.GetAttributes() => AttributeCollection.Empty;
+        string ICustomTypeDescriptor.GetClassName() => null;
+        string ICustomTypeDescriptor.GetComponentName() => null;
+        TypeConverter ICustomTypeDescriptor.GetConverter() => null;
+        EventDescriptor ICustomTypeDescriptor.GetDefaultEvent() => null;
+        PropertyDescriptor ICustomTypeDescriptor.GetDefaultProperty() => null;
+        object ICustomTypeDescriptor.GetEditor(Type editorBaseType) => null;
+        EventDescriptorCollection ICustomTypeDescriptor.GetEvents(Attribute[] attributes) => EventDescriptorCollection.Empty;
+        EventDescriptorCollection ICustomTypeDescriptor.GetEvents() => EventDescriptorCollection.Empty;
+        PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties(Attribute[] attributes) => ((ICustomTypeDescriptor)this).GetProperties();
+        object ICustomTypeDescriptor.GetPropertyOwner(PropertyDescriptor pd) => this;
 
         PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties()
         {
@@ -103,34 +100,23 @@ namespace NotWebMatrix.Data
 
         class DynamicPropertyDescriptor : PropertyDescriptor
         {
-            static readonly Attribute[] _empty = new Attribute[0];
-            readonly Type _type;
-
             public DynamicPropertyDescriptor(string name, Type type) :
-                base(name, _empty)
-            {
-                _type = type;
-            }
+                base(name, Array.Empty<Attribute>()) =>
+                PropertyType = type;
 
-            public override object GetValue(object component)
-            {
-                var record = component as DynamicRecord;
-                return record != null ? record[Name] : null;
-            }
+            public override object GetValue(object component) =>
+                component is DynamicRecord record ? record[Name] : null;
 
-            public override Type ComponentType { get { return typeof(DynamicRecord); } }
-            public override bool IsReadOnly { get { return true; } }
-            public override Type PropertyType { get { return _type; } }
-            public override bool CanResetValue(object component) { return false; }
-            public override void ResetValue(object component) { throw CreateRecordReadOnlyException(); }
-            public override void SetValue(object component, object value) { throw CreateRecordReadOnlyException(); }
-            public override bool ShouldSerializeValue(object component) { return false; }
+            public override Type ComponentType => typeof(DynamicRecord);
+            public override bool IsReadOnly => true;
+            public override Type PropertyType { get; }
+            public override bool CanResetValue(object component) => false;
+            public override void ResetValue(object component) => throw CreateRecordReadOnlyException();
+            public override void SetValue(object component, object value) => throw CreateRecordReadOnlyException();
+            public override bool ShouldSerializeValue(object component) => false;
 
-            Exception CreateRecordReadOnlyException()
-            {
-                var message = string.Format(@"Unable to modify the value of column ""{0}"" because the record is read only.", Name);
-                return new InvalidOperationException(message);
-            }
+            Exception CreateRecordReadOnlyException() =>
+                new InvalidOperationException($@"Unable to modify the value of column ""{Name}"" because the record is read only.");
         }
     }
 }

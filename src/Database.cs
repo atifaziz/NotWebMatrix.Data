@@ -53,14 +53,14 @@ namespace NotWebMatrix.Data
             // ReSharper disable MemberHidesStaticFromOuterClass
             public static event EventHandler<ConnectionEventArgs> ConnectionOpened // ReSharper restore MemberHidesStaticFromOuterClass
             {
-                add { Database.ConnectionOpened += value; }
-                remove { Database.ConnectionOpened -= value; }
+                add    => Database.ConnectionOpened += value;
+                remove => Database.ConnectionOpened -= value;
             }
 
             public static event EventHandler<CommandEventArgs> CommandCreated
             {
-                add { GlobalCommandCreated += value; }
-                remove { GlobalCommandCreated -= value; }
+                add    => GlobalCommandCreated += value;
+                remove => GlobalCommandCreated -= value;
             }
         }
 
@@ -72,7 +72,7 @@ namespace NotWebMatrix.Data
             _connectionFactory = connectionFactory;
         }
 
-        public DbConnection Connection { get { return _connection ?? (_connection = _connectionFactory()); } }
+        public DbConnection Connection => _connection ?? (_connection = _connectionFactory());
 
         public void Dispose()
         {
@@ -109,12 +109,12 @@ namespace NotWebMatrix.Data
             if (Connection.State != ConnectionState.Open)
             {
                 Connection.Open();
-                OnConnectionOpened();
+                ConnectionOpened?.Invoke(this, new ConnectionEventArgs(Connection));
             }
 
             var command = Connection.CreateCommand();
             command.CommandText = commandText;
-            if (options != null && options.CommandTimeout != null)
+            if (options?.CommandTimeout != null)
                 command.CommandTimeout = (int) options.CommandTimeout.Value.TotalSeconds;
             var parameters = CreateParameters(command.CreateParameter, args);
             command.Parameters.AddRange(parameters.ToArray());
@@ -124,7 +124,7 @@ namespace NotWebMatrix.Data
 
         static string ValidatingCommandText(string commandText)
         {
-            if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty("commandText");
+            if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty(nameof(commandText));
             return commandText;
         }
 
@@ -144,8 +144,7 @@ namespace NotWebMatrix.Data
             Debug.Assert(parameterFactory != null);
             var parameter = parameterFactory();
             parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
-            var actor = value as Action<IDbDataParameter>;
-            if (actor != null)
+            if (value is Action<IDbDataParameter> actor)
                 actor(parameter);
             else
                 parameter.Value = value ?? DBNull.Value;
@@ -154,23 +153,8 @@ namespace NotWebMatrix.Data
 
         void OnCommandCreated(CommandEventArgs args)
         {
-            OnCommandEvent(CommandCreated, args);
-            OnCommandEvent(GlobalCommandCreated, args);
-        }
-
-        void OnCommandEvent(EventHandler<CommandEventArgs> handler, CommandEventArgs args)
-        {
-            if (handler == null)
-                return;
-            handler(this, args);
-        }
-
-        void OnConnectionOpened()
-        {
-            var handler = ConnectionOpened;
-            if (handler == null)
-                return;
-            handler(this, new ConnectionEventArgs(Connection));
+            CommandCreated?.Invoke(this, args);
+            GlobalCommandCreated?.Invoke(this, args);
         }
 
         [Serializable]
@@ -179,15 +163,11 @@ namespace NotWebMatrix.Data
             public bool Unbuffered { get; set; }
         }
 
-        public IEnumerable<dynamic> Query(string commandText, params object[] args)
-        {
-            return Query(null, commandText, args);
-        }
+        public IEnumerable<dynamic> Query(string commandText, params object[] args) =>
+            Query(null, commandText, args);
 
-        public IEnumerable<dynamic> Query(QueryOptions options, string commandText, params object[] args)
-        {
-            return QueryImpl(options, commandText, args);
-        }
+        public IEnumerable<dynamic> Query(QueryOptions options, string commandText, params object[] args) =>
+            QueryImpl(options, commandText, args);
 
         public dynamic QuerySingle(string commandText, params object[] args)
         {
@@ -195,20 +175,14 @@ namespace NotWebMatrix.Data
             return QueryImpl(options, commandText, args).FirstOrDefault();
         }
 
-        public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args)
-        {
-            return QueryRecords(null, commandText, args);
-        }
+        public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args) =>
+            QueryRecords(null, commandText, args);
 
-        public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args)
-        {
-            return Query(options, commandText, args, r => r.SelectRecords());
-        }
+        public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args) =>
+            Query(options, commandText, args, r => r.SelectRecords());
 
-        IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args)
-        {
-            return Query(options, commandText, args, r => r.Select());
-        }
+        IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args) =>
+            Query(options, commandText, args, r => r.Select());
 
         IEnumerable<T> Query<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
         {
@@ -231,10 +205,8 @@ namespace NotWebMatrix.Data
             }
         }
 
-        public dynamic QueryValue(string commandText, params object[] args)
-        {
-            return QueryValue(null, commandText, args);
-        }
+        public dynamic QueryValue(string commandText, params object[] args) =>
+            QueryValue(null, commandText, args);
 
         public dynamic QueryValue(CommandOptions options, string commandText, params object[] args)
         {
@@ -242,10 +214,8 @@ namespace NotWebMatrix.Data
                 return command.ExecuteScalar();
         }
 
-        public T QueryValue<T>(string commandText, params object[] args)
-        {
-            return QueryValue<T>(null, commandText, args);
-        }
+        public T QueryValue<T>(string commandText, params object[] args) =>
+            QueryValue<T>(null, commandText, args);
 
         public T QueryValue<T>(CommandOptions options, string commandText, params object[] args)
         {
@@ -264,10 +234,8 @@ namespace NotWebMatrix.Data
             return (T) Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-        public int Execute(string commandText, params object[] args)
-        {
-            return Execute(null, commandText, args);
-        }
+        public int Execute(string commandText, params object[] args) =>
+            Execute(null, commandText, args);
 
         public int Execute(CommandOptions options, string commandText, params object[] args)
         {
@@ -275,39 +243,31 @@ namespace NotWebMatrix.Data
                 return command.ExecuteNonQuery();
         }
 
-        public dynamic GetLastInsertId()
-        {
-            return QueryValue("SELECT @@Identity");
-        }
+        public dynamic GetLastInsertId() =>
+            QueryValue("SELECT @@Identity");
 
         #if NETFX
 
         public static Database Open(string name)
         {
-            if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty("name");
+            if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty(nameof(name));
             return OpenNamedConnection(name);
         }
 
         #endif
 
-        public static Database OpenConnectionString(string connectionString)
-        {
-            return OpenConnectionString(connectionString, (DbProviderFactory) null);
-        }
+        public static Database OpenConnectionString(string connectionString) =>
+            OpenConnectionString(connectionString, (DbProviderFactory) null);
 
-        public static Database OpenConnectionString(string connectionString, string providerName)
-        {
-            return OpenConnectionStringImpl(providerName, null, connectionString);
-        }
+        public static Database OpenConnectionString(string connectionString, string providerName) =>
+            OpenConnectionStringImpl(providerName, null, connectionString);
 
-        public static Database OpenConnectionString(string connectionString, DbProviderFactory providerFactory)
-        {
-            return OpenConnectionStringImpl(null, providerFactory, connectionString);
-        }
+        public static Database OpenConnectionString(string connectionString, DbProviderFactory providerFactory) =>
+            OpenConnectionStringImpl(null, providerFactory, connectionString);
 
         static Database OpenConnectionStringImpl(string providerName, DbProviderFactory providerFactory, string connectionString)
         {
-            if (string.IsNullOrEmpty(connectionString)) throw Exceptions.ArgumentNullOrEmpty("connectionString");
+            if (string.IsNullOrEmpty(connectionString)) throw Exceptions.ArgumentNullOrEmpty(nameof(connectionString));
 
             var decorator = ConnectionDecorator ?? (connection => connection);
 
@@ -358,23 +318,16 @@ namespace NotWebMatrix.Data
 
         public static Func<string, ConnectionStringSettings> NamedConnectionStringResolver
         {
-            get { return _namedConnectionStringResolver ?? DefaultNamedConnectionStringResolver; }
-            set
-            {
-                if (value == null) throw new ArgumentNullException("value");
-                _namedConnectionStringResolver = value;
-            }
+            get => _namedConnectionStringResolver ?? DefaultNamedConnectionStringResolver;
+            set => _namedConnectionStringResolver = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         static Database OpenNamedConnection(string name)
         {
             var connectionStringSettings = NamedConnectionStringResolver(name);
-            if (connectionStringSettings == null)
-            {
-                var message = string.Format(@"Connection string ""{0}"" was not found.", name);
-                throw new InvalidOperationException(message);
-            }
-            return OpenConnectionStringImpl(connectionStringSettings.ProviderName, null, connectionStringSettings.ConnectionString);
+            return connectionStringSettings != null
+                 ? OpenConnectionStringImpl(connectionStringSettings.ProviderName, null, connectionStringSettings.ConnectionString)
+                 : throw new InvalidOperationException($@"Connection string ""{name}"" was not found.");;
         }
 
         static string GetDefaultProviderName()
@@ -395,39 +348,29 @@ namespace NotWebMatrix.Data
                 _opener = opener;
             }
 
-            public Database Open() { return _opener(); }
+            public Database Open() => _opener();
         }
 
         #if NETFX
 
-        public static IDatabaseOpener Opener(string name)
-        {
-            return new DatabaseOpener(() => Open(name));
-        }
+        public static IDatabaseOpener Opener(string name) =>
+            new DatabaseOpener(() => Open(name));
 
         #endif
 
-        public static IDatabaseOpener ConnectionStringOpener(string connectionString)
-        {
-            return new DatabaseOpener(() => OpenConnectionString(connectionString));
-        }
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString) =>
+            new DatabaseOpener(() => OpenConnectionString(connectionString));
 
-        public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName)
-        {
-            return new DatabaseOpener(() => OpenConnectionString(connectionString, providerName));
-        }
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName) =>
+            new DatabaseOpener(() => OpenConnectionString(connectionString, providerName));
 
-        public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory)
-        {
-            return new DatabaseOpener(() => OpenConnectionString(connectionString, providerFactory));
-        }
+        public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory) =>
+            new DatabaseOpener(() => OpenConnectionString(connectionString, providerFactory));
 
         static class Exceptions
         {
-            public static ArgumentException ArgumentNullOrEmpty(string paramName)
-            {
-                return new ArgumentException(@"Value cannot be null or an empty string.", paramName);
-            }
+            public static ArgumentException ArgumentNullOrEmpty(string paramName) =>
+                new ArgumentException(@"Value cannot be null or an empty string.", paramName);
         }
     }
 }

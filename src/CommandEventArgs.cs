@@ -29,11 +29,9 @@ namespace NotWebMatrix.Data
 
     public class CommandEventArgs : EventArgs
     {
-        public DbCommand Command { get; private set; }
+        public DbCommand Command { get; }
 
-        public CommandEventArgs(DbCommand command)
-        {
+        public CommandEventArgs(DbCommand command) =>
             Command = command;
-        }
     }
 }

@@ -29,11 +29,9 @@ namespace NotWebMatrix.Data
 
     public class ConnectionEventArgs : EventArgs
     {
-        public DbConnection Connection { get; private set; }
+        public DbConnection Connection { get; }
 
-        public ConnectionEventArgs(DbConnection connection)
-        {
+        public ConnectionEventArgs(DbConnection connection) =>
             Connection = connection;
-        }
     }
 }

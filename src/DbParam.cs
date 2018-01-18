@@ -66,14 +66,14 @@ namespace NotWebMatrix.Data
         public static Action<IDbDataParameter> Specific<T>(Action<T> action)
             where T : IDbDataParameter
         {
-            if (action == null) throw new ArgumentNullException("action");
+            if (action == null) throw new ArgumentNullException(nameof(action));
             return p => action((T) p);
         }
 
         public static Action<IDbDataParameter> Specific<T>(params Action<T>[] actions)
             where T : IDbDataParameter
         {
-            if (actions == null) throw new ArgumentNullException("actions");
+            if (actions == null) throw new ArgumentNullException(nameof(actions));
 
             actions = actions.Length > 0
                     ? actions

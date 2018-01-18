@@ -106,8 +106,8 @@ var count = db.QueryValue("SELECT COUNT(*) FROM Product WHERE Price > @0", 20);
 ```
 
 
-[win-build-badge]: https://img.shields.io/appveyor/ci/raboof/notwebmatrix.data/master.svg?label=windows
-[win-builds]: https://ci.appveyor.com/project/raboof/notwebmatrix.data
+[win-build-badge]: https://img.shields.io/appveyor/ci/raboof/notwebmatrix-data/master.svg?label=windows
+[win-builds]: https://ci.appveyor.com/project/raboof/notwebmatrix-data
 [nix-build-badge]: https://img.shields.io/travis/atifaziz/NotWebMatrix.Data/master.svg?label=linux
 [nix-builds]: https://travis-ci.org/atifaziz/NotWebMatrix.Data
 [myget-badge]: https://img.shields.io/myget/raboof/vpre/NotWebMatrix.Data.svg?label=myget

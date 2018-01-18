@@ -17,4 +17,4 @@ install:
   - dotnet restore
 
 script:
-  - dotnet build --no-restore -c $CONFIGURATION
+  - dotnet build --no-restore -c $CONFIGURATION -f netstandard2.0

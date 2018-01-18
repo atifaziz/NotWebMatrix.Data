@@ -6,6 +6,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NotWebMatrix.Data", "src\Da
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{00A1B715-6AEB-4408-9CC2-FED2AD46C72B}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		build.cmd = build.cmd
 		build.sh = build.sh
 		COPYING.txt = COPYING.txt

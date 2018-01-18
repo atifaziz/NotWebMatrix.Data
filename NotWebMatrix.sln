@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NotWebMatrix.Data", "src\Data\NotWebMatrix.Data.csproj", "{0109DCD0-8335-4DCB-89B3-FBA9CC6F3E93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NotWebMatrix.Data", "src\NotWebMatrix.Data.csproj", "{0109DCD0-8335-4DCB-89B3-FBA9CC6F3E93}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{00A1B715-6AEB-4408-9CC2-FED2AD46C72B}"
 	ProjectSection(SolutionItems) = preProject

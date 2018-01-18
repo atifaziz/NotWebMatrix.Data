@@ -35,7 +35,7 @@ namespace NotWebMatrix.Data
     #endregion
 
     /// <summary>
-    /// Provides methods and properties that are used to access and manage 
+    /// Provides methods and properties that are used to access and manage
     /// data that is stored in a database.
     /// </summary>
 
@@ -48,9 +48,9 @@ namespace NotWebMatrix.Data
 
         public static event EventHandler<ConnectionEventArgs> ConnectionOpened;
         static event EventHandler<CommandEventArgs> GlobalCommandCreated;
-        
+
         public static class GlobalEvents
-        {    
+        {
             // ReSharper disable MemberHidesStaticFromOuterClass
             public static event EventHandler<ConnectionEventArgs> ConnectionOpened // ReSharper restore MemberHidesStaticFromOuterClass
             {
@@ -215,7 +215,7 @@ namespace NotWebMatrix.Data
         {
             Debug.Assert(selector != null);
             var items = QueryImpl(options, ValidatingCommandText(commandText), args, selector);
-            return options == null || !options.Unbuffered 
+            return options == null || !options.Unbuffered
                  ? Array.AsReadOnly(items.ToArray())
                  : items;
         }
@@ -265,7 +265,7 @@ namespace NotWebMatrix.Data
             return (T) Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-        public int Execute(string commandText, params object[] args) 
+        public int Execute(string commandText, params object[] args)
         {
             return Execute(null, commandText, args);
         }
@@ -358,7 +358,7 @@ namespace NotWebMatrix.Data
 
         static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
-        [NotNull] 
+        [NotNull]
         public static Func<string, ConnectionStringSettings> NamedConnectionStringResolver
         {
             get { return _namedConnectionStringResolver ?? DefaultNamedConnectionStringResolver; }

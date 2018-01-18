@@ -32,7 +32,7 @@ namespace NotWebMatrix.Data
     #endregion
 
     /// <summary>
-    /// Represents a data record by using a custom type descriptor and the 
+    /// Represents a data record by using a custom type descriptor and the
     /// capabilities of the Dynamic Language Runtime (DLR).
     /// </summary>
 
@@ -41,7 +41,7 @@ namespace NotWebMatrix.Data
     {
         readonly IDataRecord _record;
         ReadOnlyCollection<string> _columns;
-        
+
         public DynamicRecord(IDataRecord record)
         {
             if (record == null) throw new ArgumentNullException("record");
@@ -52,9 +52,9 @@ namespace NotWebMatrix.Data
         public object this[int index] { get { return GetValue(_record[index]); } }
         static object GetValue(object value) { return !Convert.IsDBNull(value) ? value : null; }
 
-        public IList<string> Columns 
-        { 
-            get 
+        public IList<string> Columns
+        {
+            get
             {
                 if (_columns == null)
                 {
@@ -64,7 +64,7 @@ namespace NotWebMatrix.Data
                     _columns = Array.AsReadOnly(names.ToArray());
                 }
                 return _columns;
-            } 
+            }
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)

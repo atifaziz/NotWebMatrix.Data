@@ -23,7 +23,7 @@ namespace NotWebMatrix.Data
     using System.Data.Common;
 
     /// <summary>
-    /// Provides data for the <see cref="Database.ConnectionOpened"/> event 
+    /// Provides data for the <see cref="Database.ConnectionOpened"/> event
     /// of the <see cref="Database"/> class.
     /// </summary>
 

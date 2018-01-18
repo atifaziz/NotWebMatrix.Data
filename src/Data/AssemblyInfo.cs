@@ -29,27 +29,8 @@ using ComVisible = System.Runtime.InteropServices.ComVisibleAttribute;
 // General description
 //
 
-[assembly: AssemblyTitle("NotWebMatrix.Data")]
 [assembly: AssemblyDescription("NotWebMatrix Data Access Library")]
 [assembly: AssemblyProduct("NotWebMatrix")]
-[assembly: AssemblyCompany("http://www.raboof.com")]
-[assembly: AssemblyCopyright("Copyright \xa9 2012, Atif Aziz. All rights reserved.")]
-[assembly: AssemblyCulture("")]
-
-//
-// Configuration (test, debug, release)
-//
-
-#if TEST
-#if !DEBUG
-#warning Test builds should be compiled using the DEBUG configuration.
-#endif
-[assembly: AssemblyConfiguration("Test")]
-#elif DEBUG
-[assembly: AssemblyConfiguration("Debug")]
-#else
-[assembly: AssemblyConfiguration("Release")]
-#endif
 
 //
 // COM visibility and CLS compliance

@@ -1,7 +1,17 @@
 @echo off
+pushd "%~dp0"
+call :main %*
+popd
+goto :EOF
+
+:main
 setlocal
-chcp 1252 > nul
-cd "%~dp0"
-if not exist dist md dist
-if not %errorlevel%==0 exit /b %errorlevel%
-call build /v:m && for %%i in (pkg\*.nuspec) do .nuget\NuGet pack %%i -OutputDirectory dist -Symbols
+set VERSION_SUFFIX=
+if not "%~1"=="" set VERSION_SUFFIX=--version-suffix %~1
+call build                                               ^
+ && dotnet pack                                          ^
+           --no-build --include-symbols --include-source ^
+           -c Release -o ..\..\dist                      ^
+           %VERSION_SUFFIX%                              ^
+           src\Data
+goto :EOF

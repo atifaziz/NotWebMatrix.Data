@@ -45,7 +45,6 @@ namespace NotWebMatrix.Data
         DbConnection _connection;
 
         public static Func<DbConnection, DbConnection> ConnectionDecorator { get; set; }
-        static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
         public static event EventHandler<ConnectionEventArgs> ConnectionOpened;
         static event EventHandler<CommandEventArgs> GlobalCommandCreated;
@@ -282,11 +281,15 @@ namespace NotWebMatrix.Data
             return QueryValue("SELECT @@Identity");
         }
 
+        #if NETFX
+
         public static Database Open(string name)
         {
             if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty("name");
             return OpenNamedConnection(name);
         }
+
+        #endif
 
         public static Database OpenConnectionString(string connectionString)
         {
@@ -311,8 +314,16 @@ namespace NotWebMatrix.Data
 
             if (providerFactory == null)
             {
+                #if NETFX
+
                 if (string.IsNullOrEmpty(providerName))
                     providerName = GetDefaultProviderName();
+
+                #else
+
+                throw new ArgumentNullException("providerFactory");
+
+                #endif
             }
             else
             {
@@ -321,11 +332,15 @@ namespace NotWebMatrix.Data
 
             return new Database(() =>
             {
+                #if NETFX
+
                 if (providerFactory == null)
                 {
                     Debug.Assert(providerName != null);
                     providerFactory = DbProviderFactories.GetFactory(providerName);
                 }
+
+                #endif
 
                 var connection = providerFactory.CreateConnection();
                 if (connection == null)
@@ -336,8 +351,12 @@ namespace NotWebMatrix.Data
             });
         }
 
+        #if NETFX
+
         [NotNull]
         public static readonly Func<string, ConnectionStringSettings> DefaultNamedConnectionStringResolver = name => ConfigurationManager.ConnectionStrings[name];
+
+        static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
         [NotNull] 
         public static Func<string, ConnectionStringSettings> NamedConnectionStringResolver
@@ -367,6 +386,8 @@ namespace NotWebMatrix.Data
             return !string.IsNullOrWhiteSpace(value) ? value : "System.Data.SqlServerCe.4.0";
         }
 
+        #endif
+
         sealed class DatabaseOpener : IDatabaseOpener
         {
             readonly Func<Database> _opener;
@@ -380,10 +401,14 @@ namespace NotWebMatrix.Data
             public Database Open() { return _opener(); }
         }
 
+        #if NETFX
+
         public static IDatabaseOpener Opener(string name)
         {
             return new DatabaseOpener(() => Open(name));
         }
+
+        #endif
 
         public static IDatabaseOpener ConnectionStringOpener(string connectionString)
         {

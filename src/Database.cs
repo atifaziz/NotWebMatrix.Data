@@ -30,7 +30,6 @@ namespace NotWebMatrix.Data
     using System.Globalization;
     using System.Linq;
     using Eggado;
-    using JetBrains.Annotations;
 
     #endregion
 
@@ -353,12 +352,10 @@ namespace NotWebMatrix.Data
 
         #if NETFX
 
-        [NotNull]
         public static readonly Func<string, ConnectionStringSettings> DefaultNamedConnectionStringResolver = name => ConfigurationManager.ConnectionStrings[name];
 
         static Func<string, ConnectionStringSettings> _namedConnectionStringResolver;
 
-        [NotNull]
         public static Func<string, ConnectionStringSettings> NamedConnectionStringResolver
         {
             get { return _namedConnectionStringResolver ?? DefaultNamedConnectionStringResolver; }
@@ -392,7 +389,7 @@ namespace NotWebMatrix.Data
         {
             readonly Func<Database> _opener;
 
-            public DatabaseOpener([NotNull] Func<Database> opener)
+            public DatabaseOpener(Func<Database> opener)
             {
                 Debug.Assert(opener != null);
                 _opener = opener;

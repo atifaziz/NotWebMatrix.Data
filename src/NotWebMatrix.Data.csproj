@@ -16,7 +16,8 @@
     <RepositoryUrl>https://github.com/atifaziz/NotWebMatrix.Data</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>ado data sql webmatrix</PackageTags>
-  <PackageLicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>  </PropertyGroup>
+    <PackageLicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
+  </PropertyGroup>
 
  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\bin\Debug\</OutputPath>

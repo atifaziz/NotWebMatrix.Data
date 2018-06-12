@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
@@ -10,8 +10,7 @@
     <Description>Simple database access like in WebMatrix.Data.</Description>
     <Authors>Atif Aziz</Authors>
     <Owners>Atif Aziz</Owners>
-    <Company>
-    </Company>
+    <Company/>
     <PackageProjectUrl>https://github.com/atifaziz/NotWebMatrix.Data</PackageProjectUrl>
     <RepositoryUrl>https://github.com/atifaziz/NotWebMatrix.Data</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

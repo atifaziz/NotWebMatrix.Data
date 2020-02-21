@@ -18,6 +18,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>ado data sql webmatrix</PackageTags>
     <PackageLicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
+    <PackageOutputPath>..\dist</PackageOutputPath>
   </PropertyGroup>
 
  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

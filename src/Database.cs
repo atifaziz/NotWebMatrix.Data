@@ -303,7 +303,7 @@ namespace NotWebMatrix.Data
 
                 var connection = providerFactory.CreateConnection();
                 if (connection == null)
-                    throw new NullReferenceException(string.Format("{0} returned a connection reference not set to an instance.", providerFactory.GetType()));
+                    throw new NullReferenceException($"{providerFactory.GetType()} returned a connection reference not set to an instance.");
 
                 connection.ConnectionString = connectionString;
                 return decorator(connection);

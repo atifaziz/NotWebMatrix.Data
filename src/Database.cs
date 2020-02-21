@@ -327,7 +327,7 @@ namespace NotWebMatrix.Data
             var connectionStringSettings = NamedConnectionStringResolver(name);
             return connectionStringSettings != null
                  ? OpenConnectionStringImpl(connectionStringSettings.ProviderName, null, connectionStringSettings.ConnectionString)
-                 : throw new InvalidOperationException($@"Connection string ""{name}"" was not found.");;
+                 : throw new InvalidOperationException($@"Connection string ""{name}"" was not found.");
         }
 
         static string GetDefaultProviderName()

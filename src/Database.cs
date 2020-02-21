@@ -72,7 +72,7 @@ namespace NotWebMatrix.Data
             _connectionFactory = connectionFactory;
         }
 
-        public DbConnection Connection => _connection ?? (_connection = _connectionFactory());
+        public DbConnection Connection => _connection ??= _connectionFactory();
 
         public void Dispose()
         {
@@ -197,12 +197,10 @@ namespace NotWebMatrix.Data
         {
             Debug.Assert(selector != null);
 
-            using (var command = Command(options, commandText, args))
-            {
-                var items = Eggnumerable.From(command.ExecuteReader, selector);
-                foreach (var item in items)
-                    yield return item;
-            }
+            using var command = Command(options, commandText, args);
+            var items = Eggnumerable.From(command.ExecuteReader, selector);
+            foreach (var item in items)
+                yield return item;
         }
 
         public dynamic QueryValue(string commandText, params object[] args) =>
@@ -210,8 +208,8 @@ namespace NotWebMatrix.Data
 
         public dynamic QueryValue(CommandOptions options, string commandText, params object[] args)
         {
-            using (var command = Command(options, commandText, args))
-                return command.ExecuteScalar();
+            using var command = Command(options, commandText, args);
+            return command.ExecuteScalar();
         }
 
         public T QueryValue<T>(string commandText, params object[] args) =>
@@ -239,8 +237,8 @@ namespace NotWebMatrix.Data
 
         public int Execute(CommandOptions options, string commandText, params object[] args)
         {
-            using (var command = Command(options, commandText, args))
-                return command.ExecuteNonQuery();
+            using var command = Command(options, commandText, args);
+            return command.ExecuteNonQuery();
         }
 
         public dynamic GetLastInsertId() =>

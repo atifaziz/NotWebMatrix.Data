@@ -31,8 +31,7 @@ build_script:
 - ps: |-
     $id = ([datetimeoffset]$env:APPVEYOR_REPO_COMMIT_TIMESTAMP).ToUniversalTime().ToString('yyyyMMdd''t''HHmm')
     if ($isWindows) { .\pack.cmd ci-$id }
-- sh: dotnet build -c Debug -f netstandard2.0
-- sh: dotnet build -c Release -f netstandard2.0
+- sh: ./build.sh
 artifacts:
 - path: dist\*.nupkg
 deploy:

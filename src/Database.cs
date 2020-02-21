@@ -244,15 +244,11 @@ namespace NotWebMatrix.Data
         public dynamic GetLastInsertId() =>
             QueryValue("SELECT @@Identity");
 
-        #if NETFX
-
         public static Database Open(string name)
         {
             if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty(nameof(name));
             return OpenNamedConnection(name);
         }
-
-        #endif
 
         public static Database OpenConnectionString(string connectionString) =>
             OpenConnectionString(connectionString, (DbProviderFactory)null);
@@ -271,7 +267,7 @@ namespace NotWebMatrix.Data
 
             if (providerFactory == null)
             {
-                #if NETFX
+                #if NETSTANDARD2_1
 
                 if (string.IsNullOrEmpty(providerName))
                     providerName = GetDefaultProviderName();
@@ -289,7 +285,7 @@ namespace NotWebMatrix.Data
 
             return new Database(() =>
             {
-                #if NETFX
+                #if NETSTANDARD2_1
 
                 if (providerFactory == null)
                 {
@@ -307,8 +303,6 @@ namespace NotWebMatrix.Data
                 return decorator(connection);
             });
         }
-
-        #if NETFX
 
         public static readonly Func<string, ConnectionStringSettings> DefaultNamedConnectionStringResolver = name => ConfigurationManager.ConnectionStrings[name];
 
@@ -334,8 +328,6 @@ namespace NotWebMatrix.Data
             return !string.IsNullOrWhiteSpace(value) ? value : "System.Data.SqlServerCe.4.0";
         }
 
-        #endif
-
         sealed class DatabaseOpener : IDatabaseOpener
         {
             readonly Func<Database> _opener;
@@ -349,12 +341,8 @@ namespace NotWebMatrix.Data
             public Database Open() => _opener();
         }
 
-        #if NETFX
-
         public static IDatabaseOpener Opener(string name) =>
             new DatabaseOpener(() => Open(name));
-
-        #endif
 
         public static IDatabaseOpener ConnectionStringOpener(string connectionString) =>
             new DatabaseOpener(() => OpenConnectionString(connectionString));

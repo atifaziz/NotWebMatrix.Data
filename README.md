@@ -12,7 +12,7 @@ was originally designed to be 100% compatible, the API may evolve and deviate
 over time to support more features while maintaining the simplicity and
 ease-of-use that was the spirit of the original.
 
-It targets [.NET Standard][netstd] 2.0.
+It targets [.NET Standard][netstd] 2.0 and 2.1.
 
 
 ## Reference

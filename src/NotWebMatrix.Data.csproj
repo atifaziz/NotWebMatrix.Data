@@ -17,7 +17,7 @@
     <RepositoryUrl>https://github.com/atifaziz/NotWebMatrix.Data</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>ado data sql webmatrix</PackageTags>
-    <PackageLicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
+    <PackageLicenseFile>COPYING.txt</PackageLicenseFile>
     <PackageOutputPath>..\dist</PackageOutputPath>
   </PropertyGroup>
 
@@ -41,9 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\COPYING.txt" Link="COPYING.txt">
-      <PackagePath />
-    </Content>
+    <None Include="..\COPYING.txt" Pack="true" PackagePath="$(PackageLicenseFile)" />
   </ItemGroup>
 
 </Project>

@@ -94,13 +94,22 @@ namespace NotWebMatrix.Data
         [Serializable]
         public class CommandOptions
         {
-            public TimeSpan? CommandTimeout { get; set; }
+            public static readonly CommandOptions Default = new CommandOptions(null);
+
+            protected CommandOptions(TimeSpan? commandTimeout) =>
+                CommandTimeout = commandTimeout;
+
+            public TimeSpan? CommandTimeout { get; }
+
+            public CommandOptions WithTimeout(TimeSpan? value) =>
+                CommandTimeout == value ? this : Update(value);
+
+            protected virtual CommandOptions Update(TimeSpan? value) =>
+                new CommandOptions(value);
         }
 
-        public DbCommand Command(string commandText, params object[] args)
-        {
-            return Command(null, commandText, args);
-        }
+        public DbCommand Command(string commandText, params object[] args) =>
+            Command(CommandOptions.Default, commandText, args);
 
         public DbCommand Command(CommandOptions options, string commandText, params object[] args)
         {
@@ -160,23 +169,40 @@ namespace NotWebMatrix.Data
         [Serializable]
         public class QueryOptions : CommandOptions
         {
-            public bool Unbuffered { get; set; }
+            public new static readonly QueryOptions Default = new QueryOptions(null, false);
+
+            protected QueryOptions(TimeSpan? commandTimeout, bool unbuffered) :
+                base(commandTimeout) =>
+                Unbuffered = unbuffered;
+
+            public bool Unbuffered { get; }
+
+            public QueryOptions WithCommandTimeout(TimeSpan? value) =>
+                value == CommandTimeout ? this : Update(value, Unbuffered);
+
+            public QueryOptions WithUnbuffered(bool value) =>
+                value == Unbuffered ? this : Update(CommandTimeout, value);
+
+            protected override CommandOptions Update(TimeSpan? value) =>
+                Update(value, Unbuffered);
+
+            protected virtual QueryOptions Update(TimeSpan? commandTimeout, bool unbuffered) =>
+                new QueryOptions(CommandTimeout, Unbuffered);
         }
 
         public IEnumerable<dynamic> Query(string commandText, params object[] args) =>
-            Query(null, commandText, args);
+            Query(QueryOptions.Default, commandText, args);
 
         public IEnumerable<dynamic> Query(QueryOptions options, string commandText, params object[] args) =>
             QueryImpl(options, commandText, args);
 
-        public dynamic QuerySingle(string commandText, params object[] args)
-        {
-            var options = new QueryOptions { Unbuffered = true };
-            return QueryImpl(options, commandText, args).FirstOrDefault();
-        }
+        static readonly QueryOptions UnbufferedQueryOptions = QueryOptions.Default.WithUnbuffered(true);
+
+        public dynamic QuerySingle(string commandText, params object[] args) =>
+            QueryImpl(UnbufferedQueryOptions, commandText, args).FirstOrDefault();
 
         public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args) =>
-            QueryRecords(null, commandText, args);
+            QueryRecords(QueryOptions.Default, commandText, args);
 
         public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args) =>
             Query(options, commandText, args, r => r.SelectRecords());
@@ -188,12 +214,12 @@ namespace NotWebMatrix.Data
         {
             Debug.Assert(selector != null);
             var items = QueryImpl(options, ValidatingCommandText(commandText), args, selector);
-            return options == null || !options.Unbuffered
+            return !options.Unbuffered
                  ? Array.AsReadOnly(items.ToArray())
                  : items;
         }
 
-        IEnumerable<T> QueryImpl<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
+        IEnumerable<T> QueryImpl<T>(CommandOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
         {
             Debug.Assert(selector != null);
 
@@ -204,7 +230,7 @@ namespace NotWebMatrix.Data
         }
 
         public dynamic QueryValue(string commandText, params object[] args) =>
-            QueryValue(null, commandText, args);
+            QueryValue(CommandOptions.Default, commandText, args);
 
         public dynamic QueryValue(CommandOptions options, string commandText, params object[] args)
         {
@@ -213,7 +239,7 @@ namespace NotWebMatrix.Data
         }
 
         public T QueryValue<T>(string commandText, params object[] args) =>
-            QueryValue<T>(null, commandText, args);
+            QueryValue<T>(CommandOptions.Default, commandText, args);
 
         public T QueryValue<T>(CommandOptions options, string commandText, params object[] args)
         {
@@ -233,7 +259,7 @@ namespace NotWebMatrix.Data
         }
 
         public int Execute(string commandText, params object[] args) =>
-            Execute(null, commandText, args);
+            Execute(CommandOptions.Default, commandText, args);
 
         public int Execute(CommandOptions options, string commandText, params object[] args)
         {

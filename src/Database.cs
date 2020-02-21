@@ -115,7 +115,7 @@ namespace NotWebMatrix.Data
             var command = Connection.CreateCommand();
             command.CommandText = commandText;
             if (options?.CommandTimeout != null)
-                command.CommandTimeout = (int) options.CommandTimeout.Value.TotalSeconds;
+                command.CommandTimeout = (int)options.CommandTimeout.Value.TotalSeconds;
             var parameters = CreateParameters(command.CreateParameter, args);
             command.Parameters.AddRange(parameters.ToArray());
             OnCommandCreated(new CommandEventArgs(command));
@@ -219,10 +219,10 @@ namespace NotWebMatrix.Data
 
         public T QueryValue<T>(CommandOptions options, string commandText, params object[] args)
         {
-            var value = (object) QueryValue(options, commandText, args);
+            var value = (object)QueryValue(options, commandText, args);
 
             if (value == null || Convert.IsDBNull(value))
-                return (T) (object) null;
+                return (T)(object)null;
 
             var type = typeof(T);
             var conversionType = type.IsGenericType
@@ -231,7 +231,7 @@ namespace NotWebMatrix.Data
                                  ? Nullable.GetUnderlyingType(type)
                                  : type;
 
-            return (T) Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
+            return (T)Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
         public int Execute(string commandText, params object[] args) =>
@@ -257,7 +257,7 @@ namespace NotWebMatrix.Data
         #endif
 
         public static Database OpenConnectionString(string connectionString) =>
-            OpenConnectionString(connectionString, (DbProviderFactory) null);
+            OpenConnectionString(connectionString, (DbProviderFactory)null);
 
         public static Database OpenConnectionString(string connectionString, string providerName) =>
             OpenConnectionStringImpl(providerName, null, connectionString);

@@ -92,7 +92,7 @@ namespace NotWebMatrix.Data
             var columns = Columns;
             var properties =
                 from i in Enumerable.Range(0, columns.Count)
-                select (PropertyDescriptor) new DynamicPropertyDescriptor(columns[i], record.GetFieldType(i));
+                select (PropertyDescriptor)new DynamicPropertyDescriptor(columns[i], record.GetFieldType(i));
             return new PropertyDescriptorCollection(properties.ToArray(), readOnly: true);
         }
 

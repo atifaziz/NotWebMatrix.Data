@@ -212,21 +212,21 @@ namespace NotWebMatrix.Data
 
         IEnumerable<T> Query<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
         {
+            ValidatingCommandText(commandText);
+
             Debug.Assert(selector != null);
-            var items = QueryImpl(options, ValidatingCommandText(commandText), args, selector);
+
+            var items = _(); IEnumerable<T> _()
+            {
+                using var command = Command(options, commandText, args);
+                var items = Eggnumerable.From(command.ExecuteReader, selector);
+                foreach (var item in items)
+                    yield return item;
+            }
+
             return !options.Unbuffered
                  ? Array.AsReadOnly(items.ToArray())
                  : items;
-        }
-
-        IEnumerable<T> QueryImpl<T>(CommandOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
-        {
-            Debug.Assert(selector != null);
-
-            using var command = Command(options, commandText, args);
-            var items = Eggnumerable.From(command.ExecuteReader, selector);
-            foreach (var item in items)
-                yield return item;
         }
 
         public dynamic QueryValue(string commandText, params object[] args) =>

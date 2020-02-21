@@ -274,7 +274,7 @@ namespace NotWebMatrix.Data
 
                 #else
 
-                throw new ArgumentNullException("providerFactory");
+                throw new ArgumentNullException(nameof(providerFactory));
 
                 #endif
             }

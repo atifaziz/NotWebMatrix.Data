@@ -113,6 +113,8 @@ namespace NotWebMatrix.Data
 
         public DbCommand Command(CommandOptions options, string commandText, params object[] args)
         {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
             ValidatingCommandText(commandText);
 
             if (Connection.State != ConnectionState.Open)
@@ -212,6 +214,8 @@ namespace NotWebMatrix.Data
 
         IEnumerable<T> Query<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
         {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
             ValidatingCommandText(commandText);
 
             Debug.Assert(selector != null);

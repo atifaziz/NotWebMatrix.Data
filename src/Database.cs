@@ -29,6 +29,8 @@ namespace NotWebMatrix.Data
     using System.Diagnostics;
     using System.Globalization;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Eggado;
 
     #endregion
@@ -242,14 +244,55 @@ namespace NotWebMatrix.Data
             return command.ExecuteScalar();
         }
 
+        public Task<dynamic> QueryValueAsync(string commandText, params object[] args) =>
+            QueryValueAsync(null, commandText, args);
+
+        public Task<dynamic> QueryValueAsync(CommandOptions options,
+                                             string commandText, params object[] args) =>
+            QueryValueAsync(options, CancellationToken.None, commandText, args);
+
+        public Task<dynamic> QueryValueAsync(CancellationToken cancellationToken,
+                                             string commandText, params object[] args) =>
+            QueryValueAsync(CommandOptions.Default, cancellationToken, commandText, args);
+
+        public async Task<dynamic>
+            QueryValueAsync(CommandOptions options,
+                            CancellationToken cancellationToken,
+                            string commandText, params object[] args)
+        {
+        #if ASYNC_DISPOSAL
+            await //...
+        #endif
+            using var command = Command(options, commandText, args);
+            return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         public T QueryValue<T>(string commandText, params object[] args) =>
             QueryValue<T>(CommandOptions.Default, commandText, args);
 
-        public T QueryValue<T>(CommandOptions options, string commandText, params object[] args)
-        {
-            var value = (object)QueryValue(options, commandText, args);
+        public T QueryValue<T>(CommandOptions options, string commandText, params object[] args) =>
+            Convert<T>((object)QueryValue(options, commandText, args));
 
-            if (value == null || Convert.IsDBNull(value))
+        public Task<T> QueryValueAsync<T>(string commandText, params object[] args) =>
+            QueryValueAsync<T>(null, commandText, args);
+
+        public Task<T> QueryValueAsync<T>(CommandOptions options,
+                                          string commandText, params object[] args) =>
+            QueryValueAsync<T>(options, CancellationToken.None, commandText, args);
+
+        public Task<T> QueryValueAsync<T>(CancellationToken cancellationToken,
+                                          string commandText, params object[] args) =>
+            QueryValueAsync<T>(CommandOptions.Default, cancellationToken, commandText, args);
+
+        public async Task<T> QueryValueAsync<T>(CommandOptions options,
+                                                CancellationToken cancellationToken,
+                                                string commandText, params object[] args) =>
+            Convert<T>((object)await QueryValueAsync(options, cancellationToken,
+                                                     commandText, args).ConfigureAwait(false));
+
+        static T Convert<T>(object value)
+        {
+            if (value == null || System.Convert.IsDBNull(value))
                 return (T)(object)null;
 
             var type = typeof(T);
@@ -259,7 +302,7 @@ namespace NotWebMatrix.Data
                                  ? Nullable.GetUnderlyingType(type)
                                  : type;
 
-            return (T)Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
+            return (T)System.Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
         public int Execute(string commandText, params object[] args) =>

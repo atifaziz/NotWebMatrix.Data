@@ -314,6 +314,28 @@ namespace NotWebMatrix.Data
             return command.ExecuteNonQuery();
         }
 
+        public Task<int> ExecuteAsync(string commandText, params object[] args) =>
+            ExecuteAsync(new CancellationToken(), commandText, args);
+
+        public Task<int> ExecuteAsync(CancellationToken cancellationToken,
+                                      string commandText, params object[] args) =>
+            ExecuteAsync(CommandOptions.Default, cancellationToken, commandText, args);
+
+        public Task<int> ExecuteAsync(CommandOptions options,
+                                      string commandText, params object[] args) =>
+            ExecuteAsync(options, new CancellationToken(), commandText, args);
+
+        public async Task<int>
+            ExecuteAsync(CommandOptions options, CancellationToken cancellationToken,
+                         string commandText, params object[] args)
+        {
+        #if ASYNC_DISPOSAL
+            await //...
+        #endif
+            using var command = Command(options, commandText, args);
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         public dynamic GetLastInsertId() =>
             QueryValue("SELECT @@Identity");
 

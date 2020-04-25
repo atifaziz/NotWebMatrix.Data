@@ -235,6 +235,47 @@ namespace NotWebMatrix.Data
                  : items;
         }
 
+        #if ASYNC_STREAMS
+
+        public IAsyncEnumerable<dynamic>
+            QueryAsync(string commandText, params object[] args) =>
+            QueryAsync(QueryOptions.Default, commandText, args);
+
+        public IAsyncEnumerable<dynamic>
+            QueryAsync(QueryOptions options, string commandText, params object[] args) =>
+            QueryAsync(options, commandText, args, (r, ct) => r.SelectAsync(ct));
+
+        public IAsyncEnumerable<IDataRecord>
+            QueryRecordsAsync(string commandText, params object[] args) =>
+            QueryRecordsAsync(QueryOptions.Default, commandText, args);
+
+        public IAsyncEnumerable<IDataRecord>
+            QueryRecordsAsync(QueryOptions options, string commandText, params object[] args) =>
+            QueryAsync(options, commandText, args, (r, ct) => r.SelectRecordsAsync(ct));
+
+        IAsyncEnumerable<dynamic> QueryAsyncImpl(QueryOptions options, string commandText, object[] args) =>
+            QueryAsync(options, commandText, args, (r, ct) => r.SelectAsync(ct));
+
+        IAsyncEnumerable<T> QueryAsync<T>(CommandOptions options, string commandText, object[] args,
+                                          Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            ValidatingCommandText(commandText);
+
+            Debug.Assert(selector != null);
+
+            return _(); async IAsyncEnumerable<T> _()
+            {
+                await using var command = Command(options, commandText, args);
+                var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
+                await foreach (var item in items.ConfigureAwait(false))
+                    yield return item;
+            }
+        }
+
+        #endif
+
         public dynamic QueryValue(string commandText, params object[] args) =>
             QueryValue(CommandOptions.Default, commandText, args);
 

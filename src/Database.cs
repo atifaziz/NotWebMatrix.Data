@@ -317,6 +317,12 @@ namespace NotWebMatrix.Data
         public dynamic GetLastInsertId() =>
             QueryValue("SELECT @@Identity");
 
+        public Task<dynamic> GetLastInsertIdAsync() =>
+            GetLastInsertIdAsync(new CancellationToken());
+
+        public Task<dynamic> GetLastInsertIdAsync(CancellationToken cancellationToken) =>
+            QueryValueAsync(cancellationToken, "SELECT @@Identity");
+
         public static Database Open(string name)
         {
             if (string.IsNullOrEmpty(name)) throw Exceptions.ArgumentNullOrEmpty(nameof(name));

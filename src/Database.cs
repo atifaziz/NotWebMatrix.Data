@@ -235,7 +235,7 @@ namespace NotWebMatrix.Data
 
             ValidatingCommandText(commandText);
 
-            var query = QueryAsync(options, commandText, args);
+            var query = QueryAsync(commandText, args, options);
 
             await foreach (var item in query.ConfigureAwait(false)
                                             .WithCancellation(cancellationToken))
@@ -289,24 +289,29 @@ namespace NotWebMatrix.Data
 
         public IAsyncEnumerable<dynamic>
             QueryAsync(string commandText, params object[] args) =>
-            QueryAsync(QueryOptions.Default, commandText, args);
+            QueryAsync(commandText, args, QueryOptions.Default);
 
         public IAsyncEnumerable<dynamic>
-            QueryAsync(QueryOptions options, string commandText, params object[] args) =>
-            QueryAsync(options, commandText, args, (r, ct) => r.SelectAsync(ct));
+            QueryAsync(string commandText, IEnumerable<object> args,
+                       QueryOptions options) =>
+            QueryAsync(commandText, args, options, (r, ct) => r.SelectAsync(ct));
 
         public IAsyncEnumerable<IDataRecord>
             QueryRecordsAsync(string commandText, params object[] args) =>
-            QueryRecordsAsync(QueryOptions.Default, commandText, args);
+            QueryRecordsAsync(commandText, args, QueryOptions.Default);
 
         public IAsyncEnumerable<IDataRecord>
-            QueryRecordsAsync(QueryOptions options, string commandText, params object[] args) =>
-            QueryAsync(options, commandText, args, (r, ct) => r.SelectRecordsAsync(ct));
+            QueryRecordsAsync(string commandText, IEnumerable<object> args,
+                              QueryOptions options) =>
+            QueryAsync(commandText, args, options, (r, ct) => r.SelectRecordsAsync(ct));
 
-        IAsyncEnumerable<dynamic> QueryAsyncImpl(QueryOptions options, string commandText, object[] args) =>
-            QueryAsync(options, commandText, args, (r, ct) => r.SelectAsync(ct));
+        IAsyncEnumerable<dynamic>
+            QueryAsyncImpl(string commandText, IEnumerable<object> args,
+                           QueryOptions options) =>
+            QueryAsync(commandText, args, options, (r, ct) => r.SelectAsync(ct));
 
-        IAsyncEnumerable<T> QueryAsync<T>(CommandOptions options, string commandText, object[] args,
+        IAsyncEnumerable<T> QueryAsync<T>(string commandText, IEnumerable<object> args,
+                                          CommandOptions options,
                                           Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -340,20 +345,19 @@ namespace NotWebMatrix.Data
         }
 
         public Task<dynamic> QueryValueAsync(string commandText, params object[] args) =>
-            QueryValueAsync(null, commandText, args);
+            QueryValueAsync(commandText, args, CancellationToken.None);
 
-        public Task<dynamic> QueryValueAsync(CommandOptions options,
-                                             string commandText, params object[] args) =>
-            QueryValueAsync(options, CancellationToken.None, commandText, args);
+        public Task<dynamic> QueryValueAsync(string commandText, IEnumerable<object> args,
+                                             CommandOptions options) =>
+            QueryValueAsync(commandText, args, options, CancellationToken.None);
 
-        public Task<dynamic> QueryValueAsync(CancellationToken cancellationToken,
-                                             string commandText, params object[] args) =>
-            QueryValueAsync(CommandOptions.Default, cancellationToken, commandText, args);
+        public Task<dynamic> QueryValueAsync(string commandText, IEnumerable<object> args,
+                                             CancellationToken cancellationToken) =>
+            QueryValueAsync(commandText, args, CommandOptions.Default, cancellationToken);
 
         public async Task<dynamic>
-            QueryValueAsync(CommandOptions options,
-                            CancellationToken cancellationToken,
-                            string commandText, params object[] args)
+            QueryValueAsync(string commandText, IEnumerable<object> args,
+                            CommandOptions options, CancellationToken cancellationToken)
         {
         #if ASYNC_DISPOSAL
             await //...
@@ -373,21 +377,20 @@ namespace NotWebMatrix.Data
             Convert<T>((object)QueryValue(commandText, args, options));
 
         public Task<T> QueryValueAsync<T>(string commandText, params object[] args) =>
-            QueryValueAsync<T>(null, commandText, args);
+            QueryValueAsync<T>(commandText, args, CancellationToken.None);
 
-        public Task<T> QueryValueAsync<T>(CommandOptions options,
-                                          string commandText, params object[] args) =>
-            QueryValueAsync<T>(options, CancellationToken.None, commandText, args);
+        public Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
+                                          CommandOptions options) =>
+            QueryValueAsync<T>(commandText, args, options, CancellationToken.None);
 
-        public Task<T> QueryValueAsync<T>(CancellationToken cancellationToken,
-                                          string commandText, params object[] args) =>
-            QueryValueAsync<T>(CommandOptions.Default, cancellationToken, commandText, args);
+        public Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
+                                          CancellationToken cancellationToken) =>
+            QueryValueAsync<T>(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public async Task<T> QueryValueAsync<T>(CommandOptions options,
-                                                CancellationToken cancellationToken,
-                                                string commandText, params object[] args) =>
-            Convert<T>((object)await QueryValueAsync(options, cancellationToken,
-                                                     commandText, args).ConfigureAwait(false));
+        public async Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
+                                                CommandOptions options,
+                                                CancellationToken cancellationToken) =>
+            Convert<T>((object)await QueryValueAsync(commandText, args, options, cancellationToken).ConfigureAwait(false));
 
         static T Convert<T>(object value)
         {
@@ -418,19 +421,19 @@ namespace NotWebMatrix.Data
         }
 
         public Task<int> ExecuteAsync(string commandText, params object[] args) =>
-            ExecuteAsync(new CancellationToken(), commandText, args);
+            ExecuteAsync(commandText, args, CancellationToken.None);
 
-        public Task<int> ExecuteAsync(CancellationToken cancellationToken,
-                                      string commandText, params object[] args) =>
-            ExecuteAsync(CommandOptions.Default, cancellationToken, commandText, args);
+        public Task<int> ExecuteAsync(string commandText, IEnumerable<object> args,
+                                      CancellationToken cancellationToken) =>
+            ExecuteAsync(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public Task<int> ExecuteAsync(CommandOptions options,
-                                      string commandText, params object[] args) =>
-            ExecuteAsync(options, new CancellationToken(), commandText, args);
+        public Task<int> ExecuteAsync(string commandText, IEnumerable<object> args,
+                                      CommandOptions options) =>
+            ExecuteAsync(commandText, args, options, CancellationToken.None);
 
         public async Task<int>
-            ExecuteAsync(CommandOptions options, CancellationToken cancellationToken,
-                         string commandText, params object[] args)
+            ExecuteAsync(string commandText, IEnumerable<object> args,
+                         CommandOptions options, CancellationToken cancellationToken)
         {
         #if ASYNC_DISPOSAL
             await //...
@@ -446,7 +449,7 @@ namespace NotWebMatrix.Data
             GetLastInsertIdAsync(new CancellationToken());
 
         public Task<dynamic> GetLastInsertIdAsync(CancellationToken cancellationToken) =>
-            QueryValueAsync(cancellationToken, "SELECT @@Identity");
+            QueryValueAsync("SELECT @@Identity", cancellationToken);
 
         public static Database Open(string name)
         {

@@ -88,7 +88,7 @@ namespace NotWebMatrix.Data
             _connection = null;
         }
 
-        public void Close() { Dispose(); }
+        public void Close() => Dispose();
 
         [Serializable]
         public class CommandOptions

@@ -305,11 +305,6 @@ namespace NotWebMatrix.Data
                               QueryOptions options) =>
             QueryAsync(commandText, args, options, (r, ct) => r.SelectRecordsAsync(ct));
 
-        IAsyncEnumerable<dynamic>
-            QueryAsyncImpl(string commandText, IEnumerable<object> args,
-                           QueryOptions options) =>
-            QueryAsync(commandText, args, options, (r, ct) => r.SelectAsync(ct));
-
         IAsyncEnumerable<T> QueryAsync<T>(string commandText, IEnumerable<object> args,
                                           CommandOptions options,
                                           Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector)

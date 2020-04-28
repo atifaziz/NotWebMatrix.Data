@@ -128,8 +128,8 @@ namespace NotWebMatrix.Data
 
             var command = Connection.CreateCommand();
             command.CommandText = commandText;
-            if (options?.CommandTimeout != null)
-                command.CommandTimeout = (int)options.CommandTimeout.Value.TotalSeconds;
+            if (options.CommandTimeout is TimeSpan timeout)
+                command.CommandTimeout = (int)timeout.TotalSeconds;
             var parameters = CreateParameters(command.CreateParameter, args);
             command.Parameters.AddRange(parameters.ToArray());
             OnCommandCreated(new CommandEventArgs(command));

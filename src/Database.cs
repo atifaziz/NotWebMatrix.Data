@@ -108,9 +108,13 @@ namespace NotWebMatrix.Data
         }
 
         public DbCommand Command(string commandText, params object[] args) =>
-            Command(CommandOptions.Default, commandText, args);
+            Command(commandText, args, CommandOptions.Default);
 
-        public DbCommand Command(CommandOptions options, string commandText, params object[] args)
+        [Obsolete("Use the non-variadic overload.")]
+        public DbCommand Command(CommandOptions options, string commandText, params object[] args) =>
+            Command(commandText, args, options);
+
+        public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
@@ -192,26 +196,37 @@ namespace NotWebMatrix.Data
         }
 
         public IEnumerable<dynamic> Query(string commandText, params object[] args) =>
-            Query(QueryOptions.Default, commandText, args);
+            Query(commandText, args, QueryOptions.Default);
 
+        [Obsolete("Use the non-variadic overload.")]
         public IEnumerable<dynamic> Query(QueryOptions options, string commandText, params object[] args) =>
-            QueryImpl(options, commandText, args);
+            Query(commandText, args, options);
+
+        public IEnumerable<dynamic> Query(string commandText, IEnumerable<object> args, QueryOptions options) =>
+            QueryImpl(commandText, args, options);
 
         static readonly QueryOptions UnbufferedQueryOptions = QueryOptions.Default.WithUnbuffered(true);
 
         public dynamic QuerySingle(string commandText, params object[] args) =>
-            QueryImpl(UnbufferedQueryOptions, commandText, args).FirstOrDefault();
+            QueryImpl(commandText, args, UnbufferedQueryOptions).FirstOrDefault();
 
         public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args) =>
-            QueryRecords(QueryOptions.Default, commandText, args);
+            QueryRecords(commandText, args, QueryOptions.Default);
 
+        [Obsolete("Use the non-variadic overload.")]
         public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args) =>
-            Query(options, commandText, args, r => r.SelectRecords());
+            Query(commandText, args, options, r => r.SelectRecords());
 
-        IEnumerable<dynamic> QueryImpl(QueryOptions options, string commandText, object[] args) =>
-            Query(options, commandText, args, r => r.Select());
+        public IEnumerable<IDataRecord> QueryRecords(string commandText, IEnumerable<object> args,
+                                                     QueryOptions options) =>
+            Query(commandText, args, options, r => r.SelectRecords());
 
-        IEnumerable<T> Query<T>(QueryOptions options, string commandText, object[] args, Func<IDataReader, IEnumerator<T>> selector)
+        IEnumerable<dynamic> QueryImpl(string commandText, IEnumerable<object> args, QueryOptions options) =>
+            Query(commandText, args, options, r => r.Select());
+
+        IEnumerable<T> Query<T>(string commandText, IEnumerable<object> args,
+                                QueryOptions options,
+                                Func<IDataReader, IEnumerator<T>> selector)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
@@ -221,7 +236,7 @@ namespace NotWebMatrix.Data
 
             var items = _(); IEnumerable<T> _()
             {
-                using var command = Command(options, commandText, args);
+                using var command = Command(commandText, args, options);
                 var items = Eggnumerable.From(command.ExecuteReader, selector);
                 foreach (var item in items)
                     yield return item;
@@ -264,7 +279,7 @@ namespace NotWebMatrix.Data
 
             return _(); async IAsyncEnumerable<T> _()
             {
-                await using var command = Command(options, commandText, args);
+                await using var command = Command(commandText, args, options);
                 var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
                 await foreach (var item in items.ConfigureAwait(false))
                     yield return item;
@@ -274,11 +289,15 @@ namespace NotWebMatrix.Data
         #endif
 
         public dynamic QueryValue(string commandText, params object[] args) =>
-            QueryValue(CommandOptions.Default, commandText, args);
+            QueryValue(commandText, args, CommandOptions.Default);
 
-        public dynamic QueryValue(CommandOptions options, string commandText, params object[] args)
+        [Obsolete("Use the non-variadic overload.")]
+        public dynamic QueryValue(CommandOptions options, string commandText, params object[] args) =>
+            QueryValue(commandText, args, options);
+
+        public dynamic QueryValue(string commandText, IEnumerable<object> args, CommandOptions options)
         {
-            using var command = Command(options, commandText, args);
+            using var command = Command(commandText, args, options);
             return command.ExecuteScalar();
         }
 
@@ -301,15 +320,19 @@ namespace NotWebMatrix.Data
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(options, commandText, args);
+            using var command = Command(commandText, args, options);
             return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public T QueryValue<T>(string commandText, params object[] args) =>
-            QueryValue<T>(CommandOptions.Default, commandText, args);
+            QueryValue<T>(commandText, args, CommandOptions.Default);
 
+        [Obsolete("Use the non-variadic overload.")]
         public T QueryValue<T>(CommandOptions options, string commandText, params object[] args) =>
-            Convert<T>((object)QueryValue(options, commandText, args));
+            QueryValue<T>(commandText, args, options);
+
+        public T QueryValue<T>(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            Convert<T>((object)QueryValue(commandText, args, options));
 
         public Task<T> QueryValueAsync<T>(string commandText, params object[] args) =>
             QueryValueAsync<T>(null, commandText, args);
@@ -344,11 +367,15 @@ namespace NotWebMatrix.Data
         }
 
         public int Execute(string commandText, params object[] args) =>
-            Execute(CommandOptions.Default, commandText, args);
+            Execute(commandText, args, CommandOptions.Default);
 
-        public int Execute(CommandOptions options, string commandText, params object[] args)
+        [Obsolete("Use the non-variadic overload.")]
+        public int Execute(CommandOptions options, string commandText, params object[] args) =>
+            Execute(commandText, args, options);
+
+        public int Execute(string commandText, IEnumerable<object> args, CommandOptions options)
         {
-            using var command = Command(options, commandText, args);
+            using var command = Command(commandText, args, options);
             return command.ExecuteNonQuery();
         }
 
@@ -370,7 +397,7 @@ namespace NotWebMatrix.Data
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(options, commandText, args);
+            using var command = Command(commandText, args, options);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

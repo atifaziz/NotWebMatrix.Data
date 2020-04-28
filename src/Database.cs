@@ -37,7 +37,7 @@ namespace NotWebMatrix.Data
     /// data that is stored in a database.
     /// </summary>
 
-    public class Database : IDisposable
+    public partial class Database : IDisposable
     {
         readonly Func<DbConnection> _connectionFactory;
         DbConnection _connection;
@@ -561,4 +561,23 @@ namespace NotWebMatrix.Data
                 new ArgumentException(@"Value cannot be null or an empty string.", paramName);
         }
     }
+
+    #if ASYNC_DISPOSAL
+
+    partial class Database : IAsyncDisposable
+    {
+        public virtual async ValueTask CloseAsync()
+        {
+            var connection = _connection;
+            if (connection == null)
+                return;
+            await connection.CloseAsync().ConfigureAwait(false);
+            _connection = null;
+            GC.SuppressFinalize(this);
+        }
+
+        ValueTask IAsyncDisposable.DisposeAsync() => CloseAsync();
+    }
+
+    #endif
 }

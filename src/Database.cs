@@ -210,6 +210,9 @@ namespace NotWebMatrix.Data
         public dynamic QuerySingle(string commandText, params object[] args) =>
             QueryImpl(commandText, args, UnbufferedQueryOptions).FirstOrDefault();
 
+        public dynamic QuerySingle(string commandText, IEnumerable<object> args, QueryOptions options) =>
+            QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
+
         public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args) =>
             QueryRecords(commandText, args, QueryOptions.Default);
 

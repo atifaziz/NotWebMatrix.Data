@@ -213,6 +213,41 @@ namespace NotWebMatrix.Data
         public dynamic QuerySingle(string commandText, IEnumerable<object> args, QueryOptions options) =>
             QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
 
+        #if ASYNC_STREAMS
+
+        public Task<dynamic> QuerySingleAsync(string commandText, params object[] args) =>
+            QuerySingleAsync(commandText, args, null);
+
+        public Task<dynamic> QuerySingleAsync(string commandText, IEnumerable<object> args,
+                                              QueryOptions options) =>
+            QuerySingleAsync(commandText, args, options, CancellationToken.None);
+
+        public Task<dynamic> QuerySingleAsync(string commandText, IEnumerable<object> args,
+                                              CancellationToken cancellationToken) =>
+            QuerySingleAsync(commandText, args, null, cancellationToken);
+
+        public async Task<dynamic>
+            QuerySingleAsync(string commandText, IEnumerable<object> args,
+                             QueryOptions options,
+                             CancellationToken cancellationToken)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            ValidatingCommandText(commandText);
+
+            var query = QueryAsync(options, commandText, args);
+
+            await foreach (var item in query.ConfigureAwait(false)
+                                            .WithCancellation(cancellationToken))
+            {
+                return item;
+            }
+
+            return null;
+        }
+
+        #endif
+
         public IEnumerable<IDataRecord> QueryRecords(string commandText, params object[] args) =>
             QueryRecords(commandText, args, QueryOptions.Default);
 

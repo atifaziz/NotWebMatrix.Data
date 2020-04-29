@@ -24,8 +24,40 @@ namespace NotWebMatrix.Data
 
     #endregion
 
+    interface IDataParameterModifier
+    {
+        void Modify(IDbDataParameter parameter);
+    }
+
     public static class DbParam
     {
+        public sealed class DbTypeModifier : IDataParameterModifier
+        {
+            public DbTypeModifier(DbType dbType) => DbType = dbType;
+
+            public string Name      { get; }
+            public DbType DbType    { get; }
+            public byte   Precision { get; }
+            public byte   Scale     { get; }
+            public int    Size      { get; }
+            public object Value     { get; }
+
+            public DbTypeModifier(string name, DbType dbType, byte precision, byte scale, int size, object value)
+            {
+                Name = name;
+                DbType = dbType;
+                Precision = precision;
+                Scale = scale;
+                Size = size;
+                Value = value;
+            }
+
+            public void Modify(IDbDataParameter parameter)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         static readonly Action<IDbDataParameter> Nop = delegate {};
 
         public static Action<IDbDataParameter> DbType(DbType value)  => p => p.DbType = value;

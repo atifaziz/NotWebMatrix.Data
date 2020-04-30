@@ -25,7 +25,7 @@ namespace NotWebMatrix.Data.Experimental
     using System.Linq;
     using System.Text;
 
-    public static class Sql
+    static class Sql
     {
         public static (string, List<DbParameter>)
             Format(IFormatter formatter, FormattableString fs,

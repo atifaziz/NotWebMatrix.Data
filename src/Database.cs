@@ -216,7 +216,7 @@ namespace NotWebMatrix.Data
         #if ASYNC_STREAMS
 
         public Task<dynamic> QuerySingleAsync(string commandText, params object[] args) =>
-            QuerySingleAsync(commandText, args, null);
+            QuerySingleAsync(commandText, args, QueryOptions.Default);
 
         public Task<dynamic> QuerySingleAsync(string commandText, IEnumerable<object> args,
                                               QueryOptions options) =>
@@ -224,7 +224,7 @@ namespace NotWebMatrix.Data
 
         public Task<dynamic> QuerySingleAsync(string commandText, IEnumerable<object> args,
                                               CancellationToken cancellationToken) =>
-            QuerySingleAsync(commandText, args, null, cancellationToken);
+            QuerySingleAsync(commandText, args, QueryOptions.Default, cancellationToken);
 
         public async Task<dynamic>
             QuerySingleAsync(string commandText, IEnumerable<object> args,

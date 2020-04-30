@@ -29,6 +29,7 @@ namespace NotWebMatrix.Data
     using System.Threading;
     using System.Threading.Tasks;
     using Eggado;
+    using Experimental;
 
     #endregion
 
@@ -114,11 +115,15 @@ namespace NotWebMatrix.Data
         public DbCommand Command(CommandOptions options, string commandText, params object[] args) =>
             Command(commandText, args, options);
 
-        public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options)
+        public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            Command(new CommandText(commandText), args, options);
+
+        internal DbCommand Command(CommandText commandText, IEnumerable<object> args, CommandOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            ValidatingCommandText(commandText);
+            if (commandText.Formattable is null)
+                ValidatingCommandText(commandText.Literal);
 
             if (Connection.State != ConnectionState.Open)
             {
@@ -127,42 +132,53 @@ namespace NotWebMatrix.Data
             }
 
             var command = Connection.CreateCommand();
-            command.CommandText = commandText;
+            var anonymousIndex = 0;
+
+            switch (commandText.Literal, commandText.Formattable)
+            {
+                case (var literal, null):
+                {
+                    command.CommandText = literal;
+                    foreach (var arg in args ?? Enumerable.Empty<object>())
+                        command.Parameters.Add(CreateParameter(arg));
+                    break;
+                }
+                case (null, var formattable):
+                {
+                    var (text, parameters) =
+                        Sql.FormatCommand(formattable.Formatter,
+                                          formattable.FormattableString,
+                                          CreateParameter);
+                    command.CommandText = text;
+                    foreach (var parameter in parameters)
+                        command.Parameters.Add(parameter);
+                    break;
+                }
+            }
+
             if (options.CommandTimeout is TimeSpan timeout)
                 command.CommandTimeout = (int)timeout.TotalSeconds;
-            var parameters = CreateParameters(command.CreateParameter, args);
-            command.Parameters.AddRange(parameters.ToArray());
+
             OnCommandCreated(new CommandEventArgs(command));
             return command;
+
+            DbParameter CreateParameter(object arg)
+            {
+                var parameter = command.CreateParameter();
+                if (arg is Action<IDbDataParameter> actor)
+                    actor(parameter);
+                else
+                    parameter.Value = arg ?? DBNull.Value;
+                if (string.IsNullOrEmpty(parameter.ParameterName))
+                    parameter.ParameterName = anonymousIndex++.ToString(CultureInfo.InvariantCulture);
+                return parameter;
+            }
         }
 
         static string ValidatingCommandText(string commandText)
         {
             if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty(nameof(commandText));
             return commandText;
-        }
-
-        static IEnumerable<T> CreateParameters<T>(Func<T> parameterFactory, IEnumerable<object> args)
-            where T : IDbDataParameter
-        {
-            Debug.Assert(parameterFactory != null);
-            return args == null
-                 ? Enumerable.Empty<T>()
-                 : from arg in args.Select((a, i) => new KeyValuePair<int, object>(i, a))
-                   select CreateParameter(parameterFactory, arg.Key, arg.Value);
-        }
-
-        static T CreateParameter<T>(Func<T> parameterFactory, int index, object value)
-            where T : IDbDataParameter
-        {
-            Debug.Assert(parameterFactory != null);
-            var parameter = parameterFactory();
-            parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
-            if (value is Action<IDbDataParameter> actor)
-                actor(parameter);
-            else
-                parameter.Value = value ?? DBNull.Value;
-            return parameter;
         }
 
         void OnCommandCreated(CommandEventArgs args)
@@ -580,4 +596,51 @@ namespace NotWebMatrix.Data
     }
 
     #endif
+
+    struct CommandText
+    {
+        public readonly string Literal;
+        public readonly FormattableCommandText Formattable;
+
+        public CommandText(string literal) : this(literal, null) {}
+        public CommandText(FormattableCommandText formattable) : this(null, formattable) { }
+
+        CommandText(string literal, FormattableCommandText formattable) =>
+            (Literal, Formattable) = (literal, formattable);
+    }
+
+    namespace Experimental
+    {
+        public sealed class FormattableCommandText
+        {
+            object[] _cachedArguments;
+
+            public IFormatter Formatter { get; }
+            public FormattableString FormattableString { get; }
+            public string Format => FormattableString.Format;
+            public object[] Arguments => _cachedArguments ??= FormattableString.GetArguments();
+
+            public FormattableCommandText(IFormatter formatter, FormattableString formattableString) =>
+                (Formatter, FormattableString) = (formatter, formattableString);
+        }
+
+        public static class TransactSqlModule
+        {
+            public static FormattableCommandText TSqlFormat(FormattableString fs) =>
+                new FormattableCommandText(TSqlFormatter.Instance, fs);
+        }
+
+        public static class DatabaseExtensions
+        {
+            public static DbCommand Command(this Database db, FormattableCommandText commandText) =>
+                Command(db, commandText, Database.CommandOptions.Default);
+
+            public static DbCommand Command(this Database db, FormattableCommandText commandText, Database.CommandOptions options)
+            {
+                if (db == null) throw new ArgumentNullException(nameof(db));
+                if (commandText == null) throw new ArgumentNullException(nameof(commandText));
+                return db.Command(new CommandText(commandText), commandText.Arguments, options);
+            }
+        }
+    }
 }

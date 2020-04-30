@@ -686,41 +686,46 @@ namespace NotWebMatrix.Data
     namespace Experimental
     {
         using System.Runtime.CompilerServices;
+        using Db = Data.Database;
+        using DbCmd = DatabaseCommand;
 
         public static class DatabaseExtensions
         {
             public static IDatabaseOpener WithFormatter(this IDatabaseOpener opener, IFormatter formatter) =>
-                new Data.Database.DatabaseOpener(() =>
+                new Db.DatabaseOpener(() =>
                 {
                     var db = opener.Open();
                     db.SetFormatter(formatter);
                     return db;
                 });
 
-            public static void SetFormatter(this Data.Database db, IFormatter formatter) =>
+            public static void SetFormatter(this Db db, IFormatter formatter) =>
                 db.Formatter = formatter;
         }
 
         public interface IDatabaseCommand<out T>
         {
-            T Execute(Data.Database db);
+            T Execute(Db db);
         }
 
-        public static partial class Database
+        public static class DatabaseCommand
         {
-            public static IDatabaseCommand<T> Create<T>(Func<Data.Database, T> func) =>
+            public static IDatabaseCommand<T> Create<T>(Func<Db, T> func) =>
                 new DelegatingDatabaseCommand<T>(func);
 
             sealed class DelegatingDatabaseCommand<T> : IDatabaseCommand<T>
             {
-                readonly Func<Data.Database, T> _func;
+                readonly Func<Db, T> _func;
 
-                public DelegatingDatabaseCommand(Func<Data.Database, T> func) =>
+                public DelegatingDatabaseCommand(Func<Db, T> func) =>
                     _func = func ?? throw new ArgumentNullException(nameof(func));
 
-                public T Execute(Data.Database db) => _func(db);
+                public T Execute(Db db) => _func(db);
             }
+        }
 
+        public static partial class Database
+        {
             // Execute
 
             public static IEnumerable<T>
@@ -734,20 +739,20 @@ namespace NotWebMatrix.Data
             // Command
 
             public static IDatabaseCommand<DbCommand> Command(FormattableString commandText) =>
-                Command(commandText, Data.Database.CommandOptions.Default);
+                Command(commandText, Db.CommandOptions.Default);
 
             public static IDatabaseCommand<DbCommand> Command(FormattableString commandText,
-                                                       Data.Database.CommandOptions options) =>
-                Create(db => Data.Database.Command(db, commandText, commandText.GetArguments(), options));
+                                                       Db.CommandOptions options) =>
+                DbCmd.Create(db => Db.Command(db, commandText, commandText.GetArguments(), options));
 
             // Execute
 
             public static IDatabaseCommand<int> Execute(FormattableString commandText) =>
-                Execute(commandText, Data.Database.CommandOptions.Default);
+                Execute(commandText, Db.CommandOptions.Default);
 
             public static IDatabaseCommand<int> Execute(FormattableString commandText,
-                                                  Data.Database.CommandOptions options) =>
-                Create(db => Data.Database.Execute(db, commandText, commandText.GetArguments(), options));
+                                                  Db.CommandOptions options) =>
+                DbCmd.Create(db => Db.Execute(db, commandText, commandText.GetArguments(), options));
 
             // Execute (async)
 
@@ -757,89 +762,89 @@ namespace NotWebMatrix.Data
 
             public static IDatabaseCommand<Task<int>>
                 ExecuteAsync(FormattableString commandText, CancellationToken cancellationToken) =>
-                ExecuteAsync(commandText, Data.Database.CommandOptions.Default, cancellationToken);
+                ExecuteAsync(commandText, Db.CommandOptions.Default, cancellationToken);
 
             public static IDatabaseCommand<Task<int>>
-                ExecuteAsync(FormattableString commandText, Data.Database.CommandOptions options) =>
+                ExecuteAsync(FormattableString commandText, Db.CommandOptions options) =>
                 ExecuteAsync(commandText, options, CancellationToken.None);
 
             public static IDatabaseCommand<Task<int>>
                 ExecuteAsync(FormattableString commandText,
-                             Data.Database.CommandOptions options,
+                             Db.CommandOptions options,
                              CancellationToken cancellationToken) =>
-                Create(db => Data.Database.ExecuteAsync(db, commandText, commandText.GetArguments(),
-                                                        options, cancellationToken));
+                DbCmd.Create(db => Db.ExecuteAsync(db, commandText, commandText.GetArguments(),
+                                                   options, cancellationToken));
 
             // Query
 
             public static IDatabaseCommand<IEnumerable<dynamic>>
                 Query(FormattableString commandText) =>
-                Query(commandText, Data.Database.QueryOptions.Default);
+                Query(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<IEnumerable<dynamic>>
-                Query(FormattableString commandText, Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.Query(db, commandText, commandText.GetArguments(), options));
+                Query(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.Query(db, commandText, commandText.GetArguments(), options));
 
             // QueryRecords
 
             public static IDatabaseCommand<IEnumerable<IDataRecord>>
                 QueryRecords(FormattableString commandText) =>
-                QueryRecords(commandText, Data.Database.QueryOptions.Default);
+                QueryRecords(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<IEnumerable<IDataRecord>>
                 QueryRecords(FormattableString commandText,
-                             Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QueryRecords(db, commandText, commandText.GetArguments(), options));
+                             Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryRecords(db, commandText, commandText.GetArguments(), options));
 
             // QuerySingle
 
             public static IDatabaseCommand<dynamic>
                 QuerySingle(FormattableString commandText) =>
-                QuerySingle(commandText, Data.Database.QueryOptions.Default);
+                QuerySingle(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<dynamic>
-                QuerySingle(FormattableString commandText, Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QuerySingle(db, commandText, commandText.GetArguments(), options));
+                QuerySingle(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QuerySingle(db, commandText, commandText.GetArguments(), options));
 
             // QueryValue
 
             public static IDatabaseCommand<dynamic> QueryValue(FormattableString commandText) =>
-                QueryValue(commandText, Data.Database.QueryOptions.Default);
+                QueryValue(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<dynamic>
-                QueryValue(FormattableString commandText, Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QueryValue(db, commandText, commandText.GetArguments(), options));
+                QueryValue(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryValue(db, commandText, commandText.GetArguments(), options));
 
             public static IDatabaseCommand<T> QueryValue<T>(FormattableString commandText) =>
-                QueryValue<T>(commandText, Data.Database.QueryOptions.Default);
+                QueryValue<T>(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<T> QueryValue<T>(FormattableString commandText,
-                                                      Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QueryValue<T>(db, commandText, commandText.GetArguments(), options));
+                                                      Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryValue<T>(db, commandText, commandText.GetArguments(), options));
 
             // QueryValue (async)
 
             public static IDatabaseCommand<Task<dynamic>>
                 QueryValueAsync(FormattableString commandText,
-                                Data.Database.QueryOptions options,
+                                Db.QueryOptions options,
                                 CancellationToken cancellationToken) =>
-                Create(db => Data.Database.QueryValueAsync(db, commandText, commandText.GetArguments(),
-                                                           options, cancellationToken));
+                DbCmd.Create(db => Db.QueryValueAsync(db, commandText, commandText.GetArguments(),
+                                                      options, cancellationToken));
 
             public static IDatabaseCommand<Task<T>>
                 QueryValueAsync<T>(FormattableString commandText,
-                                   Data.Database.QueryOptions options,
+                                   Db.QueryOptions options,
                                    CancellationToken cancellationToken) =>
-                Create(db => Data.Database.QueryValueAsync<T>(db, commandText, commandText.GetArguments(),
-                                                              options, cancellationToken));
+                DbCmd.Create(db => Db.QueryValueAsync<T>(db, commandText, commandText.GetArguments(),
+                                                         options, cancellationToken));
 
             // GetLastInsertId + async
 
             public static IDatabaseCommand<dynamic> GetLastInsertId() =>
-                Create(db => db.GetLastInsertId());
+                DbCmd.Create(db => db.GetLastInsertId());
 
             public static IDatabaseCommand<Task<dynamic>> GetLastInsertIdAsync() =>
-                Create(db => db.GetLastInsertIdAsync());
+                DbCmd.Create(db => db.GetLastInsertIdAsync());
         }
 
         #if ASYNC_STREAMS
@@ -850,23 +855,24 @@ namespace NotWebMatrix.Data
 
             public static IDatabaseCommand<IAsyncEnumerable<dynamic>>
                 QueryAsync(FormattableString commandText) =>
-                QueryAsync(commandText, Data.Database.QueryOptions.Default);
+                QueryAsync(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<IAsyncEnumerable<dynamic>>
                 QueryAsync(FormattableString commandText,
-                           Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QueryAsync(db, commandText, commandText.GetArguments(), options));
+                           Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryAsync(db, commandText, commandText.GetArguments(), options));
 
             // QueryRecords (async)
 
             public static IDatabaseCommand<IAsyncEnumerable<IDataRecord>>
                 QueryRecordsAsync(FormattableString commandText) =>
-                QueryRecordsAsync(commandText, Data.Database.QueryOptions.Default);
+                QueryRecordsAsync(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<IAsyncEnumerable<IDataRecord>>
                 QueryRecordsAsync(FormattableString commandText,
-                                  Data.Database.QueryOptions options) =>
-                Create(db => Data.Database.QueryRecordsAsync(db, commandText, commandText.GetArguments(), options));
+                                  Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryRecordsAsync(db, commandText, commandText.GetArguments(),
+                                                        options));
 
             // QuerySingle (async)
 
@@ -877,19 +883,19 @@ namespace NotWebMatrix.Data
             public static IDatabaseCommand<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
                                  CancellationToken cancellationToken) =>
-                QuerySingleAsync(commandText, Data.Database.QueryOptions.Default, cancellationToken);
+                QuerySingleAsync(commandText, Db.QueryOptions.Default, cancellationToken);
 
             public static IDatabaseCommand<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
-                                 Data.Database.QueryOptions options) =>
+                                 Db.QueryOptions options) =>
                 QuerySingleAsync(commandText, options, CancellationToken.None);
 
             public static IDatabaseCommand<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
-                                 Data.Database.QueryOptions options,
+                                 Db.QueryOptions options,
                                  CancellationToken cancellationToken) =>
-                Create(db => Data.Database.QuerySingleAsync(db, commandText, commandText.GetArguments(),
-                                                            options, cancellationToken));
+                DbCmd.Create(db => Db.QuerySingleAsync(db, commandText, commandText.GetArguments(),
+                                                       options, cancellationToken));
 
             // Execute (async)
 
@@ -901,8 +907,8 @@ namespace NotWebMatrix.Data
                 await using (db.ConfigureAwait(false))
                 {
                     await foreach (var item in command.Execute(db)
-                                                 .ConfigureAwait(false)
-                                                 .WithCancellation(cancellationToken))
+                                                      .ConfigureAwait(false)
+                                                      .WithCancellation(cancellationToken))
                     {
                         yield return item;
                     }

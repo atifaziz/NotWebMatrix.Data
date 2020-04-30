@@ -379,9 +379,14 @@ namespace NotWebMatrix.Data
         public dynamic QueryValue(CommandOptions options, string commandText, params object[] args) =>
             QueryValue(commandText, args, options);
 
-        public dynamic QueryValue(string commandText, IEnumerable<object> args, CommandOptions options)
+        public dynamic QueryValue(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            QueryValue(this, commandText, args, options);
+
+        internal static dynamic QueryValue(Database db,
+                                           CommandText commandText, IEnumerable<object> args,
+                                           CommandOptions options)
         {
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return command.ExecuteScalar();
         }
 
@@ -396,14 +401,19 @@ namespace NotWebMatrix.Data
                                              CancellationToken cancellationToken) =>
             QueryValueAsync(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public async Task<dynamic>
+        public Task<dynamic>
             QueryValueAsync(string commandText, IEnumerable<object> args,
+                            CommandOptions options, CancellationToken cancellationToken) =>
+            QueryValueAsync(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<dynamic>
+            QueryValueAsync(Database db, CommandText commandText, IEnumerable<object> args,
                             CommandOptions options, CancellationToken cancellationToken)
         {
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -415,7 +425,11 @@ namespace NotWebMatrix.Data
             QueryValue<T>(commandText, args, options);
 
         public T QueryValue<T>(string commandText, IEnumerable<object> args, CommandOptions options) =>
-            Convert<T>((object)QueryValue(commandText, args, options));
+            QueryValue<T>(this, commandText, args, options);
+
+        internal static T QueryValue<T>(Database db, CommandText commandText, IEnumerable<object> args,
+                                        CommandOptions options) =>
+            Convert<T>((object)QueryValue(db, commandText, args, options));
 
         public Task<T> QueryValueAsync<T>(string commandText, params object[] args) =>
             QueryValueAsync<T>(commandText, args, CancellationToken.None);
@@ -428,10 +442,17 @@ namespace NotWebMatrix.Data
                                           CancellationToken cancellationToken) =>
             QueryValueAsync<T>(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public async Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
-                                                CommandOptions options,
-                                                CancellationToken cancellationToken) =>
-            Convert<T>((object)await QueryValueAsync(commandText, args, options, cancellationToken).ConfigureAwait(false));
+        public Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
+                                          CommandOptions options,
+                                          CancellationToken cancellationToken) =>
+            QueryValueAsync<T>(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<T>
+            QueryValueAsync<T>(Database db,
+                               CommandText commandText, IEnumerable<object> args,
+                               CommandOptions options,
+                               CancellationToken cancellationToken) =>
+            Convert<T>((object)await QueryValueAsync(db, commandText, args, options, cancellationToken).ConfigureAwait(false));
 
         static T Convert<T>(object value)
         {
@@ -815,7 +836,7 @@ namespace NotWebMatrix.Data
 
             public static IDatabase2<Task<int>>
                 ExecuteAsync(FormattableString commandText) =>
-                ExecuteAsync(commandText, Data.Database.CommandOptions.Default, CancellationToken.None);
+                ExecuteAsync(commandText, CancellationToken.None);
 
             public static IDatabase2<Task<int>>
                 ExecuteAsync(FormattableString commandText, CancellationToken cancellationToken) =>
@@ -863,6 +884,38 @@ namespace NotWebMatrix.Data
                 QuerySingle(FormattableString commandText, Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QuerySingle(db, commandText, commandText.GetArguments(), options));
 
+            // QueryValue
+
+            public static IDatabase2<dynamic> QueryValue(FormattableString commandText) =>
+                QueryValue(commandText, Data.Database.QueryOptions.Default);
+
+            public static IDatabase2<dynamic>
+                QueryValue(FormattableString commandText, Data.Database.QueryOptions options) =>
+                Create(db => Data.Database.QueryValue(db, commandText, commandText.GetArguments(), options));
+
+            public static IDatabase2<T> QueryValue<T>(FormattableString commandText) =>
+                QueryValue<T>(commandText, Data.Database.QueryOptions.Default);
+
+            public static IDatabase2<T> QueryValue<T>(FormattableString commandText,
+                                                      Data.Database.QueryOptions options) =>
+                Create(db => Data.Database.QueryValue<T>(db, commandText, commandText.GetArguments(), options));
+
+            // QueryValue (async)
+
+            public static IDatabase2<Task<dynamic>>
+                QueryValueAsync(FormattableString commandText,
+                                Data.Database.QueryOptions options,
+                                CancellationToken cancellationToken) =>
+                Create(db => Data.Database.QueryValueAsync(db, commandText, commandText.GetArguments(),
+                                                           options, cancellationToken));
+
+            public static IDatabase2<Task<T>>
+                QueryValueAsync<T>(FormattableString commandText,
+                                   Data.Database.QueryOptions options,
+                                   CancellationToken cancellationToken) =>
+                Create(db => Data.Database.QueryValueAsync<T>(db, commandText, commandText.GetArguments(),
+                                                              options, cancellationToken));
+
             // GetLastInsertId + async
 
             public static IDatabase2<dynamic> GetLastInsertId() =>
@@ -902,7 +955,7 @@ namespace NotWebMatrix.Data
 
             public static IDatabase2<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText) =>
-                QuerySingleAsync(commandText, Data.Database.QueryOptions.Default, CancellationToken.None);
+                QuerySingleAsync(commandText, CancellationToken.None);
 
             public static IDatabase2<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,

@@ -701,17 +701,17 @@ namespace NotWebMatrix.Data
                 db.Formatter = formatter;
         }
 
-        public interface IDatabase2<out T>
+        public interface IDatabase<out T>
         {
             T GetResult(Data.Database db);
         }
 
         public static partial class Database
         {
-            public static IDatabase2<T> Create<T>(Func<Data.Database, T> runner) =>
+            public static IDatabase<T> Create<T>(Func<Data.Database, T> runner) =>
                 new Delegating<T>(runner);
 
-            sealed class Delegating<T> : IDatabase2<T>
+            sealed class Delegating<T> : IDatabase<T>
             {
                 readonly Func<Data.Database, T> _runner;
 
@@ -724,7 +724,7 @@ namespace NotWebMatrix.Data
             // GetResult
 
             public static IEnumerable<T>
-                GetResult<T>(this IDatabase2<IEnumerable<T>> db, IDatabaseOpener dbo)
+                GetResult<T>(this IDatabase<IEnumerable<T>> db, IDatabaseOpener dbo)
             {
                 using var db2 = dbo.Open();
                 foreach (var item in db.GetResult(db2))
@@ -733,37 +733,37 @@ namespace NotWebMatrix.Data
 
             // Command
 
-            public static IDatabase2<DbCommand> Command(FormattableString commandText) =>
+            public static IDatabase<DbCommand> Command(FormattableString commandText) =>
                 Command(commandText, Data.Database.CommandOptions.Default);
 
-            public static IDatabase2<DbCommand> Command(FormattableString commandText,
+            public static IDatabase<DbCommand> Command(FormattableString commandText,
                                                         Data.Database.CommandOptions options) =>
                 Create(db => Data.Database.Command(db, commandText, commandText.GetArguments(), options));
 
             // Execute
 
-            public static IDatabase2<int> Execute(FormattableString commandText) =>
+            public static IDatabase<int> Execute(FormattableString commandText) =>
                 Execute(commandText, Data.Database.CommandOptions.Default);
 
-            public static IDatabase2<int> Execute(FormattableString commandText,
+            public static IDatabase<int> Execute(FormattableString commandText,
                                                   Data.Database.CommandOptions options) =>
                 Create(db => Data.Database.Execute(db, commandText, commandText.GetArguments(), options));
 
             // Execute (async)
 
-            public static IDatabase2<Task<int>>
+            public static IDatabase<Task<int>>
                 ExecuteAsync(FormattableString commandText) =>
                 ExecuteAsync(commandText, CancellationToken.None);
 
-            public static IDatabase2<Task<int>>
+            public static IDatabase<Task<int>>
                 ExecuteAsync(FormattableString commandText, CancellationToken cancellationToken) =>
                 ExecuteAsync(commandText, Data.Database.CommandOptions.Default, cancellationToken);
 
-            public static IDatabase2<Task<int>>
+            public static IDatabase<Task<int>>
                 ExecuteAsync(FormattableString commandText, Data.Database.CommandOptions options) =>
                 ExecuteAsync(commandText, options, CancellationToken.None);
 
-            public static IDatabase2<Task<int>>
+            public static IDatabase<Task<int>>
                 ExecuteAsync(FormattableString commandText,
                              Data.Database.CommandOptions options,
                              CancellationToken cancellationToken) =>
@@ -772,61 +772,61 @@ namespace NotWebMatrix.Data
 
             // Query
 
-            public static IDatabase2<IEnumerable<dynamic>>
+            public static IDatabase<IEnumerable<dynamic>>
                 Query(FormattableString commandText) =>
                 Query(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<IEnumerable<dynamic>>
+            public static IDatabase<IEnumerable<dynamic>>
                 Query(FormattableString commandText, Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.Query(db, commandText, commandText.GetArguments(), options));
 
             // QueryRecords
 
-            public static IDatabase2<IEnumerable<IDataRecord>>
+            public static IDatabase<IEnumerable<IDataRecord>>
                 QueryRecords(FormattableString commandText) =>
                 QueryRecords(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<IEnumerable<IDataRecord>>
+            public static IDatabase<IEnumerable<IDataRecord>>
                 QueryRecords(FormattableString commandText,
                              Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QueryRecords(db, commandText, commandText.GetArguments(), options));
 
             // QuerySingle
 
-            public static IDatabase2<dynamic>
+            public static IDatabase<dynamic>
                 QuerySingle(FormattableString commandText) =>
                 QuerySingle(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<dynamic>
+            public static IDatabase<dynamic>
                 QuerySingle(FormattableString commandText, Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QuerySingle(db, commandText, commandText.GetArguments(), options));
 
             // QueryValue
 
-            public static IDatabase2<dynamic> QueryValue(FormattableString commandText) =>
+            public static IDatabase<dynamic> QueryValue(FormattableString commandText) =>
                 QueryValue(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<dynamic>
+            public static IDatabase<dynamic>
                 QueryValue(FormattableString commandText, Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QueryValue(db, commandText, commandText.GetArguments(), options));
 
-            public static IDatabase2<T> QueryValue<T>(FormattableString commandText) =>
+            public static IDatabase<T> QueryValue<T>(FormattableString commandText) =>
                 QueryValue<T>(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<T> QueryValue<T>(FormattableString commandText,
+            public static IDatabase<T> QueryValue<T>(FormattableString commandText,
                                                       Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QueryValue<T>(db, commandText, commandText.GetArguments(), options));
 
             // QueryValue (async)
 
-            public static IDatabase2<Task<dynamic>>
+            public static IDatabase<Task<dynamic>>
                 QueryValueAsync(FormattableString commandText,
                                 Data.Database.QueryOptions options,
                                 CancellationToken cancellationToken) =>
                 Create(db => Data.Database.QueryValueAsync(db, commandText, commandText.GetArguments(),
                                                            options, cancellationToken));
 
-            public static IDatabase2<Task<T>>
+            public static IDatabase<Task<T>>
                 QueryValueAsync<T>(FormattableString commandText,
                                    Data.Database.QueryOptions options,
                                    CancellationToken cancellationToken) =>
@@ -835,10 +835,10 @@ namespace NotWebMatrix.Data
 
             // GetLastInsertId + async
 
-            public static IDatabase2<dynamic> GetLastInsertId() =>
+            public static IDatabase<dynamic> GetLastInsertId() =>
                 Create(db => db.GetLastInsertId());
 
-            public static IDatabase2<Task<dynamic>> GetLastInsertIdAsync() =>
+            public static IDatabase<Task<dynamic>> GetLastInsertIdAsync() =>
                 Create(db => db.GetLastInsertIdAsync());
         }
 
@@ -848,43 +848,43 @@ namespace NotWebMatrix.Data
         {
             // Query (async)
 
-            public static IDatabase2<IAsyncEnumerable<dynamic>>
+            public static IDatabase<IAsyncEnumerable<dynamic>>
                 QueryAsync(FormattableString commandText) =>
                 QueryAsync(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<IAsyncEnumerable<dynamic>>
+            public static IDatabase<IAsyncEnumerable<dynamic>>
                 QueryAsync(FormattableString commandText,
                            Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QueryAsync(db, commandText, commandText.GetArguments(), options));
 
             // QueryRecords (async)
 
-            public static IDatabase2<IAsyncEnumerable<IDataRecord>>
+            public static IDatabase<IAsyncEnumerable<IDataRecord>>
                 QueryRecordsAsync(FormattableString commandText) =>
                 QueryRecordsAsync(commandText, Data.Database.QueryOptions.Default);
 
-            public static IDatabase2<IAsyncEnumerable<IDataRecord>>
+            public static IDatabase<IAsyncEnumerable<IDataRecord>>
                 QueryRecordsAsync(FormattableString commandText,
                                   Data.Database.QueryOptions options) =>
                 Create(db => Data.Database.QueryRecordsAsync(db, commandText, commandText.GetArguments(), options));
 
             // QuerySingle (async)
 
-            public static IDatabase2<Task<dynamic>>
+            public static IDatabase<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText) =>
                 QuerySingleAsync(commandText, CancellationToken.None);
 
-            public static IDatabase2<Task<dynamic>>
+            public static IDatabase<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
                                  CancellationToken cancellationToken) =>
                 QuerySingleAsync(commandText, Data.Database.QueryOptions.Default, cancellationToken);
 
-            public static IDatabase2<Task<dynamic>>
+            public static IDatabase<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
                                  Data.Database.QueryOptions options) =>
                 QuerySingleAsync(commandText, options, CancellationToken.None);
 
-            public static IDatabase2<Task<dynamic>>
+            public static IDatabase<Task<dynamic>>
                 QuerySingleAsync(FormattableString commandText,
                                  Data.Database.QueryOptions options,
                                  CancellationToken cancellationToken) =>
@@ -894,7 +894,7 @@ namespace NotWebMatrix.Data
             // GetResult (async)
 
             public static async IAsyncEnumerable<T>
-                GetResult<T>(this IDatabase2<IAsyncEnumerable<T>> db, IDatabaseOpener dbo,
+                GetResult<T>(this IDatabase<IAsyncEnumerable<T>> db, IDatabaseOpener dbo,
                              [EnumeratorCancellation]CancellationToken cancellationToken = default)
             {
                 var db2 = dbo.Open();

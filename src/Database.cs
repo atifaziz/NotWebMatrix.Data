@@ -689,7 +689,7 @@ namespace NotWebMatrix.Data
 
         public static class DatabaseExtensions
         {
-            public static IDatabaseOpener WithFormatter(this Data.IDatabaseOpener opener, IFormatter formatter) =>
+            public static IDatabaseOpener WithFormatter(this IDatabaseOpener opener, IFormatter formatter) =>
                 new Data.Database.DatabaseOpener(() =>
                 {
                     var db = opener.Open();

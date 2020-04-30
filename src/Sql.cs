@@ -26,18 +26,6 @@ namespace NotWebMatrix.Data.Experimental
     using System.Linq;
     using System.Text;
 
-    public sealed class CommandTextArguments
-    {
-        public string CommandText { get; }
-        public IReadOnlyCollection<object> Arguments { get; }
-
-        public CommandTextArguments(string commandText, object[] arguments)
-        {
-            CommandText = commandText;
-            Arguments = arguments;
-        }
-    }
-
     public static class Sql
     {
         public static DbCommand FormatCommand(this Database db, IFormatter formatter, FormattableString fs)

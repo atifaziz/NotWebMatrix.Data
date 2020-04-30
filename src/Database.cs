@@ -143,12 +143,9 @@ namespace NotWebMatrix.Data
                         command.Parameters.Add(CreateParameter(arg));
                     break;
                 }
-                case (null, var formattable):
+                case (null, var fs):
                 {
-                    var (text, parameters) =
-                        Sql.FormatCommand(formattable.Formatter,
-                                          formattable.FormattableString,
-                                          CreateParameter);
+                    var (text, parameters) = Sql.FormatCommand(Formatter, fs, CreateParameter);
                     command.CommandText = text;
                     foreach (var parameter in parameters)
                         command.Parameters.Add(parameter);
@@ -597,50 +594,126 @@ namespace NotWebMatrix.Data
 
     #endif
 
+    partial class Database : IDatabase
+    {
+        IFormatter _formatter;
+
+        internal IFormatter Formatter
+        {
+            get => _formatter ?? throw new InvalidOperationException();
+            set => _formatter = value;
+        }
+
+        Database IDatabase.Base => this;
+
+        DbCommand IDatabase.Command(FormattableString commandText, CommandOptions options) =>
+            Command(new CommandText(commandText), commandText.GetArguments(), options);
+    }
+
     struct CommandText
     {
         public readonly string Literal;
-        public readonly FormattableCommandText Formattable;
+        public readonly FormattableString Formattable;
 
         public CommandText(string literal) : this(literal, null) {}
-        public CommandText(FormattableCommandText formattable) : this(null, formattable) { }
+        public CommandText(FormattableString fs) : this(null, fs) { }
 
-        CommandText(string literal, FormattableCommandText formattable) =>
-            (Literal, Formattable) = (literal, formattable);
+        CommandText(string literal, FormattableString fs) =>
+            (Literal, Formattable) = (literal, fs);
     }
 
     namespace Experimental
     {
-        public sealed class FormattableCommandText
+        public partial interface IDatabase : IDisposable
         {
-            object[] _cachedArguments;
+            Database Base { get; }
 
-            public IFormatter Formatter { get; }
-            public FormattableString FormattableString { get; }
-            public string Format => FormattableString.Format;
-            public object[] Arguments => _cachedArguments ??= FormattableString.GetArguments();
+            event EventHandler<CommandEventArgs> CommandCreated;
 
-            public FormattableCommandText(IFormatter formatter, FormattableString formattableString) =>
-                (Formatter, FormattableString) = (formatter, formattableString);
+            DbConnection Connection { get; }
+
+            DbCommand Command(FormattableString commandText, Database.CommandOptions options);
+            /*
+            int Execute(FormattableString commandText, Database.CommandOptions options);
+            Task<int> ExecuteAsync(FormattableString commandText,
+                                   Database.CommandOptions options,
+                                   CancellationToken cancellationToken);
+
+            IEnumerable<dynamic> Query(FormattableString commandText, Database.QueryOptions options);
+            IAsyncEnumerable<dynamic> QueryAsync(FormattableString commandText,
+                                                 Database.QueryOptions options,
+                                                 CancellationToken cancellationToken);
+
+            IEnumerable<IDataRecord> QueryRecords(FormattableString commandText,
+                                                  Database.QueryOptions options);
+
+            IAsyncEnumerable<IDataRecord>
+                QueryRecordsAsync(FormattableString commandText,
+                                  Database.QueryOptions options,
+                                  CancellationToken cancellationToken);
+
+            dynamic QuerySingle(FormattableString commandText, Database.QueryOptions options);
+            Task<dynamic> QuerySingleAsync(FormattableString commandText,
+                                           Database.QueryOptions options,
+                                           CancellationToken cancellationToken);
+
+            dynamic QueryValue(FormattableString commandText, Database.QueryOptions options);
+            Task<dynamic> QueryValueAsync(FormattableString commandText,
+                                          Database.QueryOptions options,
+                                          CancellationToken cancellationToken);
+
+            T QueryValue<T>(FormattableString commandText, Database.QueryOptions options);
+            Task<T> QueryValueAsync<T>(FormattableString commandText,
+                                       Database.QueryOptions options,
+                                       CancellationToken cancellationToken);
+
+            dynamic GetLastInsertId();
+            */
+            Task<dynamic> GetLastInsertIdAsync(CancellationToken cancellationToken);
         }
 
-        public static class TransactSqlModule
+        #if ASYNC_DISPOSAL
+
+        partial interface IDatabase : IAsyncDisposable {}
+
+        #endif
+
+        public interface IDatabaseOpener
         {
-            public static FormattableCommandText TSqlFormat(FormattableString fs) =>
-                new FormattableCommandText(TSqlFormatter.Instance, fs);
+            IDatabase Open();
         }
 
         public static class DatabaseExtensions
         {
-            public static DbCommand Command(this Database db, FormattableCommandText commandText) =>
-                Command(db, commandText, Database.CommandOptions.Default);
+            public static IDatabaseOpener WithFormatter(this Data.IDatabaseOpener opener, IFormatter formatter) =>
+                new DatabaseOpener(() =>
+                {
+                    var db = opener.Open();
+                    db.SetFormatter(formatter);
+                    return db;
+                });
 
-            public static DbCommand Command(this Database db, FormattableCommandText commandText, Database.CommandOptions options)
+            sealed class DatabaseOpener : IDatabaseOpener
             {
-                if (db == null) throw new ArgumentNullException(nameof(db));
-                if (commandText == null) throw new ArgumentNullException(nameof(commandText));
-                return db.Command(new CommandText(commandText), commandText.Arguments, options);
+                readonly Func<Database> _opener;
+
+                public DatabaseOpener(Func<Database> opener)
+                {
+                    Debug.Assert(opener != null);
+                    _opener = opener;
+                }
+
+                public IDatabase Open() => _opener();
             }
+
+            public static void SetFormatter(this Database db, IFormatter formatter) =>
+                db.Formatter = formatter;
+
+            public static DbCommand Command(this IDatabase db, FormattableString commandText) =>
+                db.Command(commandText, Database.CommandOptions.Default);
+
+            public static Task<dynamic> GetLastInsertIdAsync(this IDatabase db) =>
+                db.GetLastInsertIdAsync(CancellationToken.None);
         }
     }
 }

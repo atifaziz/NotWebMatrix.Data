@@ -606,7 +606,7 @@ namespace NotWebMatrix.Data
             return !string.IsNullOrWhiteSpace(value) ? value : "System.Data.SqlServerCe.4.0";
         }
 
-        internal sealed class DatabaseOpener : IDatabaseOpener
+        sealed class DatabaseOpener : IDatabaseOpener
         {
             readonly Func<Database> _opener;
 
@@ -689,45 +689,107 @@ namespace NotWebMatrix.Data
         using Db = Data.Database;
         using DbCmd = DatabaseCommand;
 
-        public static class DatabaseExtensions
+        public sealed partial class DatabaseCommandContext : IDisposable
         {
-            public static IDatabaseOpener WithFormatter(this IDatabaseOpener opener, IFormatter formatter) =>
-                new Db.DatabaseOpener(() =>
-                {
-                    var db = opener.Open();
-                    db.SetFormatter(formatter);
-                    return db;
-                });
+            Db _db;
 
-            public static void SetFormatter(this Db db, IFormatter formatter) =>
-                db.Formatter = formatter;
+            internal DatabaseCommandContext(Db database) =>
+                _db = database;
+
+            public Db Database => _db ?? throw new ObjectDisposedException(nameof(DatabaseCommandContext));
+
+            public static implicit operator Db(DatabaseCommandContext context) => context.Database;
+
+            public void Dispose()
+            {
+                var db = _db;
+                _db = null;
+                db?.Dispose();
+            }
+        }
+
+        #if ASYNC_DISPOSAL
+
+        partial class DatabaseCommandContext : IAsyncDisposable
+        {
+            public async ValueTask DisposeAsync()
+            {
+                var db = _db;
+                if (db == null)
+                    return;
+                _db = null;
+                await db.CloseAsync().ConfigureAwait(false);
+            }
+        }
+
+        #endif
+
+        public interface IDatabaseOpener
+        {
+            DatabaseCommandContext Open();
         }
 
         public interface IDatabaseCommand<out T>
         {
-            T Execute(Db db);
+            T Execute(DatabaseCommandContext context);
         }
 
         public static class DatabaseCommand
         {
             public static IDatabaseCommand<T> Return<T>(T value) => Create(_ => value);
 
-            public static IDatabaseCommand<T> Create<T>(Func<Db, T> func) =>
+            public static IDatabaseCommand<T>
+                Create<T>(Func<DatabaseCommandContext, T> func) =>
                 new DelegatingDatabaseCommand<T>(func);
 
             sealed class DelegatingDatabaseCommand<T> : IDatabaseCommand<T>
             {
-                readonly Func<Db, T> _func;
+                readonly Func<DatabaseCommandContext, T> _func;
 
-                public DelegatingDatabaseCommand(Func<Db, T> func) =>
+                public DelegatingDatabaseCommand(Func<DatabaseCommandContext, T> func) =>
                     _func = func ?? throw new ArgumentNullException(nameof(func));
 
-                public T Execute(Db db) => _func(db);
+                public T Execute(DatabaseCommandContext context) => _func(context);
             }
         }
 
         public static partial class Database
         {
+            public static IDatabaseOpener Opener(string name, IFormatter formatter) =>
+                new DatabaseOpener(() => Db.Open(name)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, IFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, IFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerName)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, IFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerFactory)
+                                           .SettingFormatter(formatter));
+
+            public static Db SettingFormatter(this Db db, IFormatter formatter)
+            {
+                db.Formatter = formatter;
+                return db;
+            }
+
+            sealed class DatabaseOpener : IDatabaseOpener
+            {
+                readonly Func<Db> _opener;
+
+                public DatabaseOpener(Func<Db> opener)
+                {
+                    Debug.Assert(opener != null);
+                    _opener = opener;
+                }
+
+                public DatabaseCommandContext Open() => new DatabaseCommandContext(_opener());
+            }
+
             // Execute
 
             public static IEnumerable<T>
@@ -843,10 +905,10 @@ namespace NotWebMatrix.Data
             // GetLastInsertId + async
 
             public static IDatabaseCommand<dynamic> GetLastInsertId() =>
-                DbCmd.Create(db => db.GetLastInsertId());
+                DbCmd.Create(dbcc => dbcc.Database.GetLastInsertId());
 
             public static IDatabaseCommand<Task<dynamic>> GetLastInsertIdAsync() =>
-                DbCmd.Create(db => db.GetLastInsertIdAsync());
+                DbCmd.Create(dbcc => dbcc.Database.GetLastInsertIdAsync());
         }
 
         #if ASYNC_STREAMS

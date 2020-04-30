@@ -606,7 +606,7 @@ namespace NotWebMatrix.Data
             return !string.IsNullOrWhiteSpace(value) ? value : "System.Data.SqlServerCe.4.0";
         }
 
-        sealed class DatabaseOpener : IDatabaseOpener
+        internal sealed class DatabaseOpener : IDatabaseOpener
         {
             readonly Func<Database> _opener;
 
@@ -657,7 +657,7 @@ namespace NotWebMatrix.Data
 
     #endif
 
-    partial class Database : IDatabase
+    partial class Database
     {
         IFormatter _formatter;
 
@@ -666,11 +666,6 @@ namespace NotWebMatrix.Data
             get => _formatter ?? throw new InvalidOperationException();
             set => _formatter = value;
         }
-
-        Database IDatabase.Base => this;
-
-        DbCommand IDatabase.Command(FormattableString commandText, CommandOptions options) =>
-            Command(this, commandText, commandText.GetArguments(), options);
     }
 
     struct CommandText
@@ -692,96 +687,18 @@ namespace NotWebMatrix.Data
     {
         using System.Runtime.CompilerServices;
 
-        public partial interface IDatabase : IDisposable
-        {
-            Data.Database Base { get; }
-
-            event EventHandler<CommandEventArgs> CommandCreated;
-
-            DbConnection Connection { get; }
-
-            DbCommand Command(FormattableString commandText, Data.Database.CommandOptions options);
-            /*
-            int Execute(FormattableString commandText, Database.CommandOptions options);
-            Task<int> ExecuteAsync(FormattableString commandText,
-                                   Database.CommandOptions options,
-                                   CancellationToken cancellationToken);
-
-            IEnumerable<dynamic> Query(FormattableString commandText, Database.QueryOptions options);
-            IAsyncEnumerable<dynamic> QueryAsync(FormattableString commandText,
-                                                 Database.QueryOptions options,
-                                                 CancellationToken cancellationToken);
-
-            IEnumerable<IDataRecord> QueryRecords(FormattableString commandText,
-                                                  Database.QueryOptions options);
-
-            IAsyncEnumerable<IDataRecord>
-                QueryRecordsAsync(FormattableString commandText,
-                                  Database.QueryOptions options,
-                                  CancellationToken cancellationToken);
-
-            dynamic QuerySingle(FormattableString commandText, Database.QueryOptions options);
-            Task<dynamic> QuerySingleAsync(FormattableString commandText,
-                                           Database.QueryOptions options,
-                                           CancellationToken cancellationToken);
-
-            dynamic QueryValue(FormattableString commandText, Database.QueryOptions options);
-            Task<dynamic> QueryValueAsync(FormattableString commandText,
-                                          Database.QueryOptions options,
-                                          CancellationToken cancellationToken);
-
-            T QueryValue<T>(FormattableString commandText, Database.QueryOptions options);
-            Task<T> QueryValueAsync<T>(FormattableString commandText,
-                                       Database.QueryOptions options,
-                                       CancellationToken cancellationToken);
-
-            dynamic GetLastInsertId();
-            */
-            Task<dynamic> GetLastInsertIdAsync(CancellationToken cancellationToken);
-        }
-
-        #if ASYNC_DISPOSAL
-
-        partial interface IDatabase : IAsyncDisposable {}
-
-        #endif
-
-        public interface IDatabaseOpener
-        {
-            IDatabase Open();
-        }
-
         public static class DatabaseExtensions
         {
             public static IDatabaseOpener WithFormatter(this Data.IDatabaseOpener opener, IFormatter formatter) =>
-                new DatabaseOpener(() =>
+                new Data.Database.DatabaseOpener(() =>
                 {
                     var db = opener.Open();
                     db.SetFormatter(formatter);
                     return db;
                 });
 
-            sealed class DatabaseOpener : IDatabaseOpener
-            {
-                readonly Func<Data.Database> _opener;
-
-                public DatabaseOpener(Func<Data.Database> opener)
-                {
-                    Debug.Assert(opener != null);
-                    _opener = opener;
-                }
-
-                public IDatabase Open() => _opener();
-            }
-
             public static void SetFormatter(this Data.Database db, IFormatter formatter) =>
                 db.Formatter = formatter;
-
-            public static DbCommand Command(this IDatabase db, FormattableString commandText) =>
-                db.Command(commandText, Data.Database.CommandOptions.Default);
-
-            public static Task<dynamic> GetLastInsertIdAsync(this IDatabase db) =>
-                db.GetLastInsertIdAsync(CancellationToken.None);
         }
 
         public interface IDatabase2<out T>
@@ -809,7 +726,7 @@ namespace NotWebMatrix.Data
             public static IEnumerable<T>
                 GetResult<T>(this IDatabase2<IEnumerable<T>> db, IDatabaseOpener dbo)
             {
-                using var db2 = dbo.Open().Base;
+                using var db2 = dbo.Open();
                 foreach (var item in db.GetResult(db2))
                     yield return item;
             }
@@ -980,7 +897,7 @@ namespace NotWebMatrix.Data
                 GetResult<T>(this IDatabase2<IAsyncEnumerable<T>> db, IDatabaseOpener dbo,
                              [EnumeratorCancellation]CancellationToken cancellationToken = default)
             {
-                var db2 = dbo.Open().Base;
+                var db2 = dbo.Open();
                 await using (db2.ConfigureAwait(false))
                 {
                     await foreach (var item in db.GetResult(db2)

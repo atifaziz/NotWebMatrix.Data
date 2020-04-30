@@ -710,6 +710,8 @@ namespace NotWebMatrix.Data
 
         public static class DatabaseCommand
         {
+            public static IDatabaseCommand<T> Return<T>(T value) => Create(_ => value);
+
             public static IDatabaseCommand<T> Create<T>(Func<Db, T> func) =>
                 new DelegatingDatabaseCommand<T>(func);
 

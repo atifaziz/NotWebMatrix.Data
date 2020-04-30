@@ -145,7 +145,7 @@ namespace NotWebMatrix.Data
                 }
                 case (null, var fs):
                 {
-                    var (text, parameters) = Sql.FormatCommand(db.Formatter, fs, CreateParameter);
+                    var (text, parameters) = Sql.Format(db.Formatter, fs, CreateParameter);
                     command.CommandText = text;
                     foreach (var parameter in parameters)
                         command.Parameters.Add(parameter);

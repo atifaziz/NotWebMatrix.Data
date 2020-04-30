@@ -20,7 +20,6 @@ namespace NotWebMatrix.Data.Experimental
 {
     using System;
     using System.Collections.Generic;
-    using System.Data;
     using System.Data.Common;
     using System.Globalization;
     using System.Linq;
@@ -28,16 +27,9 @@ namespace NotWebMatrix.Data.Experimental
 
     public static class Sql
     {
-        public static DbCommand FormatCommand(this Data.Database db, IFormatter formatter, FormattableString fs)
-        {
-            var command = db.Connection.CreateCommand();
-            command.FormatCommand(formatter, fs);
-            return command;
-        }
-
         public static (string, List<DbParameter>)
-            FormatCommand(IFormatter formatter, FormattableString fs,
-                          Func<object, DbParameter> parameterFactory)
+            Format(IFormatter formatter, FormattableString fs,
+                   Func<object, DbParameter> parameterFactory)
         {
             if (formatter == null) throw new ArgumentNullException(nameof(formatter));
             if (fs == null) throw new ArgumentNullException(nameof(fs));
@@ -53,11 +45,6 @@ namespace NotWebMatrix.Data.Experimental
                 {
                     switch (fs.GetArgument(i))
                     {
-                        case SqlRef reference:
-                        {
-                            args[i] = formatter.Named(reference.Name);
-                            break;
-                        }
                         case SqlFormat f:
                         {
                             args[i] = Format(f.FormattableString);
@@ -74,7 +61,6 @@ namespace NotWebMatrix.Data.Experimental
                                     sb.Append(list.Separator);
                                 var parameter = parameterFactory(arg);
                                 parameters.Add(parameter);
-                                //parameter.ParameterName = formatter.Named(string.Format(CultureInfo.InvariantCulture, list.Naming, j));
                                 var name = formatter.Named(parameter.ParameterName);
                                 sb.Append(name);
                             }
@@ -98,149 +84,25 @@ namespace NotWebMatrix.Data.Experimental
                 return string.Format(fs.Format, args);
             }
         }
-
-        public static void FormatCommand(this DbCommand command, IFormatter formatter, FormattableString fs)
-        {
-            if (command == null) throw new ArgumentNullException(nameof(command));
-            if (formatter == null) throw new ArgumentNullException(nameof(formatter));
-            if (fs == null) throw new ArgumentNullException(nameof(fs));
-
-            var names = new Dictionary<string, DbParameter>(StringComparer.OrdinalIgnoreCase);
-            var anonymousIndex = 0;
-            var parameters = new List<DbParameter>();
-            var text = Format(fs);
-            command.Parameters.Clear();
-            foreach (var parameter in parameters)
-                command.Parameters.Add(parameter);
-            command.CommandText = text;
-
-            void AddParameter(DbParameter parameter)
-            {
-                parameters.Add(parameter);
-                names.Add(parameter.ParameterName, parameter);
-            }
-
-            string Format(FormattableString fs)
-            {
-                var args = new object[fs.ArgumentCount];
-                for (var i = 0; i < fs.ArgumentCount; i++)
-                {
-                    switch (fs.GetArgument(i))
-                    {
-                        case SqlLiteral literal:
-                        {
-                            args[i] = formatter.Literal(literal.Value);
-                            break;
-                        }
-                        case SqlNamed named:
-                        {
-                            if (names.TryGetValue(named.Name, out var parameter))
-                            {
-                                if (named.Value != parameter.Value)
-                                    throw new Exception($"Conflicting values supplied for parameter \"{named.Name}\".");
-                            }
-                            else
-                            {
-                                var name = formatter.Named(named.Name);
-                                parameter = command.CreateParameter();
-                                parameter.ParameterName = name;
-                                parameter.Value = named.Value;
-                                AddParameter(parameter);
-                            }
-                            args[i] = parameter.ParameterName;
-                            break;
-                        }
-                        case SqlRef reference:
-                        {
-                            args[i] = formatter.Named(reference.Name);
-                            break;
-                        }
-                        case SqlFormat f:
-                        {
-                            args[i] = Format(f.FormattableString);
-                            break;
-                        }
-                        case SqlList list:
-                        {
-                            var sb = new StringBuilder();
-                            if (list.Values.Count > 0)
-                                sb.Append(list.Before);
-                            foreach (var (j, value) in list.Values.Select((e, i) => (i, e)))
-                            {
-                                if (j > 0)
-                                    sb.Append(list.Separator);
-                                var parameter = command.CreateParameter();
-                                parameter.ParameterName = formatter.Named(string.Format(CultureInfo.InvariantCulture, list.Naming, j));
-                                sb.Append(parameter.ParameterName);
-                                parameter.Value = value;
-                                AddParameter(parameter);
-                            }
-                            if (list.Values.Count > 0)
-                                sb.Append(list.After);
-                            args[i] = sb.ToString();
-                            break;
-                        }
-                        case var arg:
-                        {
-                            var name = formatter.Anonymous(anonymousIndex++);
-                            args[i] = name;
-                            var parameter = command.CreateParameter();
-                            parameter.ParameterName = name;
-                            parameter.Value = arg;
-                            command.Parameters.Add(parameter);
-                            break;
-                        }
-                    };
-                }
-
-                return string.Format(fs.Format, args);
-            }
-        }
     }
 
     public interface ISqlFormatArgument {}
 
-    public sealed class SqlLiteral : ISqlFormatArgument
-    {
-        public object Value { get; }
-
-        public SqlLiteral(object value) =>
-            Value = value;
-    }
-
-    public sealed class SqlRef : ISqlFormatArgument
-    {
-        public string Name { get; }
-
-        public SqlRef(string name) =>
-            Name = name;
-    }
-
-    public sealed class SqlNamed : ISqlFormatArgument
-    {
-        public string Name  { get; }
-        public object Value { get; }
-
-        public SqlNamed(string name, object value) =>
-            (Name, Value) = (name, value);
-    }
-
     public sealed class SqlList : ISqlFormatArgument
     {
-        public string  Naming    { get; }
         public string? Before    { get; }
         public string? After     { get; }
         public string  Separator { get; }
         public IReadOnlyCollection<object> Values { get; }
 
-        public SqlList(string naming, string separator, IEnumerable<object> values, string? before = null, string? after = null) :
-            this(naming, before, after, separator, values.ToArray()) {}
+        public SqlList(string separator, IEnumerable<object> values, string? before = null, string? after = null) :
+            this(before, after, separator, values.ToArray()) {}
 
-        public SqlList(string naming, string separator, params object[] values) :
-            this(naming, null, null, separator, values) {}
+        public SqlList(string separator, params object[] values) :
+            this(null, null, separator, values) {}
 
-        public SqlList(string naming, string? before, string? after, string separator, params object[] values) =>
-            (Naming, Before, After, Separator, Values) = (naming, before, after, separator, Array.AsReadOnly(values));
+        public SqlList(string? before, string? after, string separator, params object[] values) =>
+            (Before, After, Separator, Values) = (before, after, separator, Array.AsReadOnly(values));
     }
 
     public sealed class SqlFormat : ISqlFormatArgument
@@ -253,7 +115,6 @@ namespace NotWebMatrix.Data.Experimental
 
     public interface IFormatter
     {
-        StringComparer NameComparer { get; }
         string Named(string name);
         string Anonymous(int index);
         string Literal(object value);

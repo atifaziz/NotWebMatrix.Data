@@ -28,7 +28,7 @@ namespace NotWebMatrix.Data.Experimental
 
     public static class Sql
     {
-        public static DbCommand FormatCommand(this Database db, IFormatter formatter, FormattableString fs)
+        public static DbCommand FormatCommand(this Data.Database db, IFormatter formatter, FormattableString fs)
         {
             var command = db.Connection.CreateCommand();
             command.FormatCommand(formatter, fs);

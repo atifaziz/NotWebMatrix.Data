@@ -674,7 +674,7 @@ namespace NotWebMatrix.Data
         public readonly FormattableString Formattable;
 
         public CommandText(string literal) : this(literal, null) {}
-        public CommandText(FormattableString fs) : this(null, fs) { }
+        public CommandText(FormattableString fs) : this(null, fs) {}
 
         CommandText(string literal, FormattableString fs) =>
             (Literal, Formattable) = (literal, fs);
@@ -737,7 +737,7 @@ namespace NotWebMatrix.Data
                 Command(commandText, Data.Database.CommandOptions.Default);
 
             public static IDatabase<DbCommand> Command(FormattableString commandText,
-                                                        Data.Database.CommandOptions options) =>
+                                                       Data.Database.CommandOptions options) =>
                 Create(db => Data.Database.Command(db, commandText, commandText.GetArguments(), options));
 
             // Execute

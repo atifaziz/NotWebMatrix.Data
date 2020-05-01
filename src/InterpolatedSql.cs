@@ -29,7 +29,7 @@ namespace NotWebMatrix.Data.Experimental
     public interface IInterpolatedSqlFormatter
     {
         (string CommandText, IReadOnlyList<DbParameter> Parameters)
-            Format(FormattableString fs, Func<object, DbParameter> parameterFactory);
+            Format(FormattableString formattableString, Func<object, DbParameter> parameterFactory);
     }
 
     public static class InterpolatedSql

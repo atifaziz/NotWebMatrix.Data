@@ -29,6 +29,7 @@ namespace NotWebMatrix.Data
     using System.Threading;
     using System.Threading.Tasks;
     using Eggado;
+    using Experimental;
 
     #endregion
 
@@ -114,55 +115,76 @@ namespace NotWebMatrix.Data
         public DbCommand Command(CommandOptions options, string commandText, params object[] args) =>
             Command(commandText, args, options);
 
-        public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options)
+        public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            Command(this, commandText, args, options);
+
+        internal static DbCommand Command(Database db, CommandText commandText, IEnumerable<object> args, CommandOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            ValidatingCommandText(commandText);
+            if (commandText.Formattable is null)
+                ValidatingCommandText(commandText.Literal);
 
-            if (Connection.State != ConnectionState.Open)
+            if (db.Connection.State != ConnectionState.Open)
             {
-                Connection.Open();
-                ConnectionOpened?.Invoke(this, new ConnectionEventArgs(Connection));
+                db.Connection.Open();
+                ConnectionOpened?.Invoke(db, new ConnectionEventArgs(db.Connection));
             }
 
-            var command = Connection.CreateCommand();
-            command.CommandText = commandText;
+            var command = db.Connection.CreateCommand();
+
+            switch (commandText.Literal, commandText.Formattable)
+            {
+                case (var literal, null):
+                {
+                    command.CommandText = literal;
+                    var anonymousCount = 0;
+                    foreach (var arg in args ?? Enumerable.Empty<object>())
+                    {
+                        var parameter = CreateParameter(arg);
+                        if (string.IsNullOrEmpty(parameter.ParameterName))
+                        {
+                            parameter.ParameterName = anonymousCount.ToString(CultureInfo.InvariantCulture);
+                            anonymousCount++;
+                        }
+                        command.Parameters.Add(parameter);
+                    }
+
+                    break;
+                }
+                case (null, var fs):
+                {
+                    var (text, parameters) = db.Formatter.Format(fs, CreateParameter);
+                    command.CommandText = text;
+                    foreach (var parameter in parameters)
+                        command.Parameters.Add(parameter);
+                    break;
+                }
+            }
+
             if (options.CommandTimeout is TimeSpan timeout)
                 command.CommandTimeout = (int)timeout.TotalSeconds;
-            var parameters = CreateParameters(command.CreateParameter, args);
-            command.Parameters.AddRange(parameters.ToArray());
-            OnCommandCreated(new CommandEventArgs(command));
+
+            db.OnCommandCreated(new CommandEventArgs(command));
             return command;
+
+            DbParameter CreateParameter(object arg)
+            {
+                var parameter = command.CreateParameter();
+
+                if (arg is Action<IDbDataParameter> actor)
+                    actor(parameter);
+                else
+                    parameter.Value = arg ?? DBNull.Value;
+
+                return parameter;
+            }
         }
 
         static string ValidatingCommandText(string commandText)
         {
             if (string.IsNullOrEmpty(commandText)) throw Exceptions.ArgumentNullOrEmpty(nameof(commandText));
             return commandText;
-        }
-
-        static IEnumerable<T> CreateParameters<T>(Func<T> parameterFactory, IEnumerable<object> args)
-            where T : IDbDataParameter
-        {
-            Debug.Assert(parameterFactory != null);
-            return args == null
-                 ? Enumerable.Empty<T>()
-                 : from arg in args.Select((a, i) => new KeyValuePair<int, object>(i, a))
-                   select CreateParameter(parameterFactory, arg.Key, arg.Value);
-        }
-
-        static T CreateParameter<T>(Func<T> parameterFactory, int index, object value)
-            where T : IDbDataParameter
-        {
-            Debug.Assert(parameterFactory != null);
-            var parameter = parameterFactory();
-            parameter.ParameterName = index.ToString(CultureInfo.InvariantCulture);
-            if (value is Action<IDbDataParameter> actor)
-                actor(parameter);
-            else
-                parameter.Value = value ?? DBNull.Value;
-            return parameter;
         }
 
         void OnCommandCreated(CommandEventArgs args)
@@ -203,15 +225,23 @@ namespace NotWebMatrix.Data
             Query(commandText, args, options);
 
         public IEnumerable<dynamic> Query(string commandText, IEnumerable<object> args, QueryOptions options) =>
-            QueryImpl(commandText, args, options);
+            Query(this, commandText, args, options);
+
+        internal static IEnumerable<dynamic>
+            Query(Database db, CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
+            db.QueryImpl(commandText, args, options);
 
         static readonly QueryOptions UnbufferedQueryOptions = QueryOptions.Default.WithUnbuffered(true);
 
         public dynamic QuerySingle(string commandText, params object[] args) =>
-            QueryImpl(commandText, args, UnbufferedQueryOptions).FirstOrDefault();
+            QuerySingle(this, commandText, args, UnbufferedQueryOptions);
 
         public dynamic QuerySingle(string commandText, IEnumerable<object> args, QueryOptions options) =>
-            QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
+            QuerySingle(this, commandText, args, options.WithUnbuffered(true));
+
+        internal static dynamic
+            QuerySingle(Database db, CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
+            db.QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
 
         #if ASYNC_STREAMS
 
@@ -226,16 +256,23 @@ namespace NotWebMatrix.Data
                                               CancellationToken cancellationToken) =>
             QuerySingleAsync(commandText, args, QueryOptions.Default, cancellationToken);
 
-        public async Task<dynamic>
+        public Task<dynamic>
             QuerySingleAsync(string commandText, IEnumerable<object> args,
+                             QueryOptions options,
+                             CancellationToken cancellationToken) =>
+            QuerySingleAsync(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<dynamic>
+            QuerySingleAsync(Database db, CommandText commandText, IEnumerable<object> args,
                              QueryOptions options,
                              CancellationToken cancellationToken)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            ValidatingCommandText(commandText);
+            if (commandText.Formattable is null)
+                ValidatingCommandText(commandText.Literal);
 
-            var query = QueryAsync(commandText, args, options);
+            var query = QueryAsync(db, commandText, args, options);
 
             await foreach (var item in query.ConfigureAwait(false)
                                             .WithCancellation(cancellationToken))
@@ -253,28 +290,35 @@ namespace NotWebMatrix.Data
 
         [Obsolete("Use the non-variadic overload.")]
         public IEnumerable<IDataRecord> QueryRecords(QueryOptions options, string commandText, params object[] args) =>
-            Query(commandText, args, options, r => r.SelectRecords());
+            QueryRecords(commandText, args, options);
 
         public IEnumerable<IDataRecord> QueryRecords(string commandText, IEnumerable<object> args,
                                                      QueryOptions options) =>
-            Query(commandText, args, options, r => r.SelectRecords());
+            QueryRecords(this, commandText, args, options);
 
-        IEnumerable<dynamic> QueryImpl(string commandText, IEnumerable<object> args, QueryOptions options) =>
+        internal static IEnumerable<IDataRecord>
+            QueryRecords(Database db, CommandText commandText, IEnumerable<object> args,
+                         QueryOptions options) =>
+            db.Query(commandText, args, options, r => r.SelectRecords());
+
+        IEnumerable<dynamic> QueryImpl(CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
             Query(commandText, args, options, r => r.Select());
 
-        IEnumerable<T> Query<T>(string commandText, IEnumerable<object> args,
-                                QueryOptions options,
-                                Func<IDataReader, IEnumerator<T>> selector)
+        internal IEnumerable<T>
+            Query<T>(CommandText commandText, IEnumerable<object> args,
+                     QueryOptions options,
+                     Func<IDataReader, IEnumerator<T>> selector)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            ValidatingCommandText(commandText);
+            if (commandText.Formattable is null)
+                ValidatingCommandText(commandText.Literal);
 
             Debug.Assert(selector != null);
 
             var items = _(); IEnumerable<T> _()
             {
-                using var command = Command(commandText, args, options);
+                using var command = Command(this, commandText, args, options);
                 var items = Eggnumerable.From(command.ExecuteReader, selector);
                 foreach (var item in items)
                     yield return item;
@@ -294,7 +338,12 @@ namespace NotWebMatrix.Data
         public IAsyncEnumerable<dynamic>
             QueryAsync(string commandText, IEnumerable<object> args,
                        QueryOptions options) =>
-            QueryAsync(commandText, args, options, (r, ct) => r.SelectAsync(ct));
+            QueryAsync(this,  commandText, args, options);
+
+        internal static IAsyncEnumerable<dynamic>
+            QueryAsync(Database db, CommandText commandText, IEnumerable<object> args,
+                       QueryOptions options) =>
+            db.QueryAsync(commandText, args, options, (r, ct) => r.SelectAsync(ct));
 
         public IAsyncEnumerable<IDataRecord>
             QueryRecordsAsync(string commandText, params object[] args) =>
@@ -303,21 +352,27 @@ namespace NotWebMatrix.Data
         public IAsyncEnumerable<IDataRecord>
             QueryRecordsAsync(string commandText, IEnumerable<object> args,
                               QueryOptions options) =>
-            QueryAsync(commandText, args, options, (r, ct) => r.SelectRecordsAsync(ct));
+            QueryRecordsAsync(this, commandText, args, options);
 
-        IAsyncEnumerable<T> QueryAsync<T>(string commandText, IEnumerable<object> args,
+        internal static IAsyncEnumerable<IDataRecord>
+            QueryRecordsAsync(Database db, CommandText commandText, IEnumerable<object> args,
+                              QueryOptions options) =>
+            db.QueryAsync(commandText, args, options, (r, ct) => r.SelectRecordsAsync(ct));
+
+        IAsyncEnumerable<T> QueryAsync<T>(CommandText commandText, IEnumerable<object> args,
                                           CommandOptions options,
                                           Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            ValidatingCommandText(commandText);
+            if (commandText.Formattable is null)
+                ValidatingCommandText(commandText.Literal);
 
             Debug.Assert(selector != null);
 
             return _(); async IAsyncEnumerable<T> _()
             {
-                await using var command = Command(commandText, args, options);
+                await using var command = Command(this, commandText, args, options);
                 var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
                 await foreach (var item in items.ConfigureAwait(false))
                     yield return item;
@@ -333,9 +388,14 @@ namespace NotWebMatrix.Data
         public dynamic QueryValue(CommandOptions options, string commandText, params object[] args) =>
             QueryValue(commandText, args, options);
 
-        public dynamic QueryValue(string commandText, IEnumerable<object> args, CommandOptions options)
+        public dynamic QueryValue(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            QueryValue(this, commandText, args, options);
+
+        internal static dynamic QueryValue(Database db,
+                                           CommandText commandText, IEnumerable<object> args,
+                                           CommandOptions options)
         {
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return command.ExecuteScalar();
         }
 
@@ -350,14 +410,19 @@ namespace NotWebMatrix.Data
                                              CancellationToken cancellationToken) =>
             QueryValueAsync(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public async Task<dynamic>
+        public Task<dynamic>
             QueryValueAsync(string commandText, IEnumerable<object> args,
+                            CommandOptions options, CancellationToken cancellationToken) =>
+            QueryValueAsync(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<dynamic>
+            QueryValueAsync(Database db, CommandText commandText, IEnumerable<object> args,
                             CommandOptions options, CancellationToken cancellationToken)
         {
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -369,7 +434,11 @@ namespace NotWebMatrix.Data
             QueryValue<T>(commandText, args, options);
 
         public T QueryValue<T>(string commandText, IEnumerable<object> args, CommandOptions options) =>
-            Convert<T>((object)QueryValue(commandText, args, options));
+            QueryValue<T>(this, commandText, args, options);
+
+        internal static T QueryValue<T>(Database db, CommandText commandText, IEnumerable<object> args,
+                                        CommandOptions options) =>
+            Convert<T>((object)QueryValue(db, commandText, args, options));
 
         public Task<T> QueryValueAsync<T>(string commandText, params object[] args) =>
             QueryValueAsync<T>(commandText, args, CancellationToken.None);
@@ -382,10 +451,17 @@ namespace NotWebMatrix.Data
                                           CancellationToken cancellationToken) =>
             QueryValueAsync<T>(commandText, args, CommandOptions.Default, cancellationToken);
 
-        public async Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
-                                                CommandOptions options,
-                                                CancellationToken cancellationToken) =>
-            Convert<T>((object)await QueryValueAsync(commandText, args, options, cancellationToken).ConfigureAwait(false));
+        public Task<T> QueryValueAsync<T>(string commandText, IEnumerable<object> args,
+                                          CommandOptions options,
+                                          CancellationToken cancellationToken) =>
+            QueryValueAsync<T>(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<T>
+            QueryValueAsync<T>(Database db,
+                               CommandText commandText, IEnumerable<object> args,
+                               CommandOptions options,
+                               CancellationToken cancellationToken) =>
+            Convert<T>((object)await QueryValueAsync(db, commandText, args, options, cancellationToken).ConfigureAwait(false));
 
         static T Convert<T>(object value)
         {
@@ -409,9 +485,13 @@ namespace NotWebMatrix.Data
         public int Execute(CommandOptions options, string commandText, params object[] args) =>
             Execute(commandText, args, options);
 
-        public int Execute(string commandText, IEnumerable<object> args, CommandOptions options)
+        public int Execute(string commandText, IEnumerable<object> args, CommandOptions options) =>
+            Execute(this, commandText, args, options);
+
+        internal static int Execute(Database db, CommandText commandText, IEnumerable<object> args,
+                                    CommandOptions options)
         {
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return command.ExecuteNonQuery();
         }
 
@@ -426,14 +506,19 @@ namespace NotWebMatrix.Data
                                       CommandOptions options) =>
             ExecuteAsync(commandText, args, options, CancellationToken.None);
 
-        public async Task<int>
+        public Task<int>
             ExecuteAsync(string commandText, IEnumerable<object> args,
+                         CommandOptions options, CancellationToken cancellationToken) =>
+            ExecuteAsync(this, commandText, args, options, cancellationToken);
+
+        internal static async Task<int>
+            ExecuteAsync(Database db, CommandText commandText, IEnumerable<object> args,
                          CommandOptions options, CancellationToken cancellationToken)
         {
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(commandText, args, options);
+            using var command = Command(db, commandText, args, options);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -580,4 +665,330 @@ namespace NotWebMatrix.Data
     }
 
     #endif
+
+    partial class Database
+    {
+        IInterpolatedSqlFormatter _formatter;
+
+        internal IInterpolatedSqlFormatter Formatter
+        {
+            get => _formatter ?? throw new InvalidOperationException();
+            set => _formatter = value;
+        }
+    }
+
+    struct CommandText
+    {
+        public readonly string Literal;
+        public readonly FormattableString Formattable;
+
+        public CommandText(string literal) : this(literal, null) {}
+        public CommandText(FormattableString fs) : this(null, fs) {}
+
+        CommandText(string literal, FormattableString fs) =>
+            (Literal, Formattable) = (literal, fs);
+
+        public static implicit operator CommandText(string s) => new CommandText(s);
+        public static implicit operator CommandText(FormattableString fs) => new CommandText(fs);
+    }
+
+    namespace Experimental
+    {
+        using System.Runtime.CompilerServices;
+        using Db = Data.Database;
+        using DbCmd = DatabaseCommand;
+
+        public sealed partial class DatabaseCommandContext : IDisposable
+        {
+            Db _db;
+
+            internal DatabaseCommandContext(Db database) =>
+                _db = database;
+
+            public Db Database => _db ?? throw new ObjectDisposedException(nameof(DatabaseCommandContext));
+
+            public static implicit operator Db(DatabaseCommandContext context) => context.Database;
+
+            public void Dispose()
+            {
+                var db = _db;
+                _db = null;
+                db?.Dispose();
+            }
+        }
+
+        #if ASYNC_DISPOSAL
+
+        partial class DatabaseCommandContext : IAsyncDisposable
+        {
+            public async ValueTask DisposeAsync()
+            {
+                var db = _db;
+                if (db == null)
+                    return;
+                _db = null;
+                await db.CloseAsync().ConfigureAwait(false);
+            }
+        }
+
+        #endif
+
+        public interface IDatabaseOpener
+        {
+            DatabaseCommandContext Open();
+        }
+
+        public interface IDatabaseCommand<out T>
+        {
+            T Execute(DatabaseCommandContext context);
+        }
+
+        public static class DatabaseCommand
+        {
+            public static IDatabaseCommand<T> Return<T>(T value) => Create(_ => value);
+
+            public static IDatabaseCommand<T>
+                Create<T>(Func<DatabaseCommandContext, T> func) =>
+                new DelegatingDatabaseCommand<T>(func);
+
+            sealed class DelegatingDatabaseCommand<T> : IDatabaseCommand<T>
+            {
+                readonly Func<DatabaseCommandContext, T> _func;
+
+                public DelegatingDatabaseCommand(Func<DatabaseCommandContext, T> func) =>
+                    _func = func ?? throw new ArgumentNullException(nameof(func));
+
+                public T Execute(DatabaseCommandContext context) => _func(context);
+            }
+        }
+
+        public static partial class Database
+        {
+            public static IDatabaseOpener Opener(string name, IInterpolatedSqlFormatter formatter) =>
+                new DatabaseOpener(() => Db.Open(name)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, IInterpolatedSqlFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, IInterpolatedSqlFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerName)
+                                           .SettingFormatter(formatter));
+
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, IInterpolatedSqlFormatter formatter) =>
+                new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerFactory)
+                                           .SettingFormatter(formatter));
+
+            static Db SettingFormatter(this Db db, IInterpolatedSqlFormatter formatter)
+            {
+                db.Formatter = formatter;
+                return db;
+            }
+
+            sealed class DatabaseOpener : IDatabaseOpener
+            {
+                readonly Func<Db> _opener;
+
+                public DatabaseOpener(Func<Db> opener)
+                {
+                    Debug.Assert(opener != null);
+                    _opener = opener;
+                }
+
+                public DatabaseCommandContext Open() => new DatabaseCommandContext(_opener());
+            }
+
+            // Execute
+
+            public static IEnumerable<T>
+                Execute<T>(this IDatabaseCommand<IEnumerable<T>> command, IDatabaseOpener dbo)
+            {
+                using var db = dbo.Open();
+                foreach (var item in command.Execute(db))
+                    yield return item;
+            }
+
+            // Command
+
+            public static IDatabaseCommand<DbCommand> Command(FormattableString commandText) =>
+                Command(commandText, Db.CommandOptions.Default);
+
+            public static IDatabaseCommand<DbCommand> Command(FormattableString commandText,
+                                                              Db.CommandOptions options) =>
+                DbCmd.Create(db => Db.Command(db, commandText, commandText.GetArguments(), options));
+
+            // Execute
+
+            public static IDatabaseCommand<int> Execute(FormattableString commandText) =>
+                Execute(commandText, Db.CommandOptions.Default);
+
+            public static IDatabaseCommand<int> Execute(FormattableString commandText,
+                                                        Db.CommandOptions options) =>
+                DbCmd.Create(db => Db.Execute(db, commandText, commandText.GetArguments(), options));
+
+            // Execute (async)
+
+            public static IDatabaseCommand<Task<int>>
+                ExecuteAsync(FormattableString commandText) =>
+                ExecuteAsync(commandText, CancellationToken.None);
+
+            public static IDatabaseCommand<Task<int>>
+                ExecuteAsync(FormattableString commandText, CancellationToken cancellationToken) =>
+                ExecuteAsync(commandText, Db.CommandOptions.Default, cancellationToken);
+
+            public static IDatabaseCommand<Task<int>>
+                ExecuteAsync(FormattableString commandText, Db.CommandOptions options) =>
+                ExecuteAsync(commandText, options, CancellationToken.None);
+
+            public static IDatabaseCommand<Task<int>>
+                ExecuteAsync(FormattableString commandText,
+                             Db.CommandOptions options,
+                             CancellationToken cancellationToken) =>
+                DbCmd.Create(db => Db.ExecuteAsync(db, commandText, commandText.GetArguments(),
+                                                   options, cancellationToken));
+
+            // Query
+
+            public static IDatabaseCommand<IEnumerable<dynamic>>
+                Query(FormattableString commandText) =>
+                Query(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<IEnumerable<dynamic>>
+                Query(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.Query(db, commandText, commandText.GetArguments(), options));
+
+            // QueryRecords
+
+            public static IDatabaseCommand<IEnumerable<IDataRecord>>
+                QueryRecords(FormattableString commandText) =>
+                QueryRecords(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<IEnumerable<IDataRecord>>
+                QueryRecords(FormattableString commandText,
+                             Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryRecords(db, commandText, commandText.GetArguments(), options));
+
+            // QuerySingle
+
+            public static IDatabaseCommand<dynamic>
+                QuerySingle(FormattableString commandText) =>
+                QuerySingle(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<dynamic>
+                QuerySingle(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QuerySingle(db, commandText, commandText.GetArguments(), options));
+
+            // QueryValue
+
+            public static IDatabaseCommand<dynamic> QueryValue(FormattableString commandText) =>
+                QueryValue(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<dynamic>
+                QueryValue(FormattableString commandText, Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryValue(db, commandText, commandText.GetArguments(), options));
+
+            public static IDatabaseCommand<T> QueryValue<T>(FormattableString commandText) =>
+                QueryValue<T>(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<T> QueryValue<T>(FormattableString commandText,
+                                                      Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryValue<T>(db, commandText, commandText.GetArguments(), options));
+
+            // QueryValue (async)
+
+            public static IDatabaseCommand<Task<dynamic>>
+                QueryValueAsync(FormattableString commandText,
+                                Db.QueryOptions options,
+                                CancellationToken cancellationToken) =>
+                DbCmd.Create(db => Db.QueryValueAsync(db, commandText, commandText.GetArguments(),
+                                                      options, cancellationToken));
+
+            public static IDatabaseCommand<Task<T>>
+                QueryValueAsync<T>(FormattableString commandText,
+                                   Db.QueryOptions options,
+                                   CancellationToken cancellationToken) =>
+                DbCmd.Create(db => Db.QueryValueAsync<T>(db, commandText, commandText.GetArguments(),
+                                                         options, cancellationToken));
+
+            // GetLastInsertId + async
+
+            public static IDatabaseCommand<dynamic> GetLastInsertId() =>
+                DbCmd.Create(dbcc => dbcc.Database.GetLastInsertId());
+
+            public static IDatabaseCommand<Task<dynamic>> GetLastInsertIdAsync() =>
+                DbCmd.Create(dbcc => dbcc.Database.GetLastInsertIdAsync());
+        }
+
+        #if ASYNC_STREAMS
+
+        partial class Database
+        {
+            // Query (async)
+
+            public static IDatabaseCommand<IAsyncEnumerable<dynamic>>
+                QueryAsync(FormattableString commandText) =>
+                QueryAsync(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<IAsyncEnumerable<dynamic>>
+                QueryAsync(FormattableString commandText,
+                           Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryAsync(db, commandText, commandText.GetArguments(), options));
+
+            // QueryRecords (async)
+
+            public static IDatabaseCommand<IAsyncEnumerable<IDataRecord>>
+                QueryRecordsAsync(FormattableString commandText) =>
+                QueryRecordsAsync(commandText, Db.QueryOptions.Default);
+
+            public static IDatabaseCommand<IAsyncEnumerable<IDataRecord>>
+                QueryRecordsAsync(FormattableString commandText,
+                                  Db.QueryOptions options) =>
+                DbCmd.Create(db => Db.QueryRecordsAsync(db, commandText, commandText.GetArguments(),
+                                                        options));
+
+            // QuerySingle (async)
+
+            public static IDatabaseCommand<Task<dynamic>>
+                QuerySingleAsync(FormattableString commandText) =>
+                QuerySingleAsync(commandText, CancellationToken.None);
+
+            public static IDatabaseCommand<Task<dynamic>>
+                QuerySingleAsync(FormattableString commandText,
+                                 CancellationToken cancellationToken) =>
+                QuerySingleAsync(commandText, Db.QueryOptions.Default, cancellationToken);
+
+            public static IDatabaseCommand<Task<dynamic>>
+                QuerySingleAsync(FormattableString commandText,
+                                 Db.QueryOptions options) =>
+                QuerySingleAsync(commandText, options, CancellationToken.None);
+
+            public static IDatabaseCommand<Task<dynamic>>
+                QuerySingleAsync(FormattableString commandText,
+                                 Db.QueryOptions options,
+                                 CancellationToken cancellationToken) =>
+                DbCmd.Create(db => Db.QuerySingleAsync(db, commandText, commandText.GetArguments(),
+                                                       options, cancellationToken));
+
+            // Execute (async)
+
+            public static async IAsyncEnumerable<T>
+                Execute<T>(this IDatabaseCommand<IAsyncEnumerable<T>> command, IDatabaseOpener dbo,
+                           [EnumeratorCancellation]CancellationToken cancellationToken = default)
+            {
+                var db = dbo.Open();
+                await using (db.ConfigureAwait(false))
+                {
+                    await foreach (var item in command.Execute(db)
+                                                      .ConfigureAwait(false)
+                                                      .WithCancellation(cancellationToken))
+                    {
+                        yield return item;
+                    }
+                }
+            }
+        }
+
+        #endif
+    }
 }

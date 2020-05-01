@@ -36,32 +36,31 @@ namespace NotWebMatrix.Data.Experimental
     {
         public static readonly IInterpolatedSqlFormatter TSqlFormatter = CreateFormatter('@', null);
 
-        public static IInterpolatedSqlFormatter CreateFormatter(char parameterNameStartToken) =>
-            CreateFormatter(parameterNameStartToken, null);
+        public static IInterpolatedSqlFormatter CreateFormatter(char parameterSigil) =>
+            CreateFormatter(parameterSigil, null);
 
         public static IInterpolatedSqlFormatter
-            CreateFormatter(char parameterNameStartToken,
-                            string? anonymousParameterPrefix) =>
-            new Formatter(parameterNameStartToken, anonymousParameterPrefix);
+            CreateFormatter(char parameterSigil, string? anonymousParameterPrefix) =>
+            new Formatter(parameterSigil, anonymousParameterPrefix);
 
         sealed class Formatter : IInterpolatedSqlFormatter
         {
-            readonly char _anonymousParameterPrefix;
-            readonly string _anonymousPrefix;
+            readonly char _parameterSigil;
+            readonly string _anonymousParameterPrefix;
 
-            public Formatter(char anonymousParameterPrefix, string? anonymousPrefix)
+            public Formatter(char parameterSigil, string? anonymousParameterPrefix)
             {
-                _anonymousParameterPrefix = anonymousParameterPrefix;
-                _anonymousPrefix = anonymousPrefix ?? string.Empty;
+                _parameterSigil = parameterSigil;
+                _anonymousParameterPrefix = anonymousParameterPrefix ?? string.Empty;
             }
 
             public (string CommandText, IReadOnlyList<DbParameter> Parameters)
                 Format(FormattableString fs, Func<object, DbParameter> parameterFactory) =>
-                InterpolatedSql.Format(_anonymousParameterPrefix, _anonymousPrefix, fs, parameterFactory);
+                InterpolatedSql.Format(_parameterSigil, _anonymousParameterPrefix, fs, parameterFactory);
         }
 
         static (string, IReadOnlyList<DbParameter>)
-            Format(char parameterNameStartToken, string anonymousParameterPrefix,
+            Format(char parameterSigil, string anonymousParameterPrefix,
                    FormattableString fs, Func<object, DbParameter> parameterFactory)
         {
             if (fs == null) throw new ArgumentNullException(nameof(fs));
@@ -96,7 +95,7 @@ namespace NotWebMatrix.Data.Experimental
                                 if (j > 0)
                                     sb.Append(list.Separator);
                                 var parameter = CreateParameter(arg);
-                                sb.Append(parameterNameStartToken);
+                                sb.Append(parameterSigil);
                                 sb.Append(parameter.ParameterName);
                             }
                             if (list.Values.Count > 0)
@@ -108,7 +107,7 @@ namespace NotWebMatrix.Data.Experimental
                         case var arg:
                         {
                             var parameter = CreateParameter(arg);
-                            args[i] = parameterNameStartToken + parameter.ParameterName;
+                            args[i] = parameterSigil + parameter.ParameterName;
                             break;
                         }
                     };

@@ -132,20 +132,29 @@ namespace NotWebMatrix.Data
             }
 
             var command = db.Connection.CreateCommand();
-            var anonymousIndex = 0;
 
             switch (commandText.Literal, commandText.Formattable)
             {
                 case (var literal, null):
                 {
                     command.CommandText = literal;
+                    var anonymousCount = 0;
                     foreach (var arg in args ?? Enumerable.Empty<object>())
-                        command.Parameters.Add(CreateParameter(arg));
+                    {
+                        var parameter = CreateParameter(arg);
+                        if (string.IsNullOrEmpty(parameter.ParameterName))
+                        {
+                            parameter.ParameterName = anonymousCount.ToString(CultureInfo.InvariantCulture);
+                            anonymousCount++;
+                        }
+                        command.Parameters.Add(parameter);
+                    }
+
                     break;
                 }
                 case (null, var fs):
                 {
-                    var (text, parameters) = Sql.Format(db.Formatter, fs, CreateParameter);
+                    var (text, parameters) = db.Formatter.Format(fs, CreateParameter);
                     command.CommandText = text;
                     foreach (var parameter in parameters)
                         command.Parameters.Add(parameter);
@@ -162,12 +171,12 @@ namespace NotWebMatrix.Data
             DbParameter CreateParameter(object arg)
             {
                 var parameter = command.CreateParameter();
+
                 if (arg is Action<IDbDataParameter> actor)
                     actor(parameter);
                 else
                     parameter.Value = arg ?? DBNull.Value;
-                if (string.IsNullOrEmpty(parameter.ParameterName))
-                    parameter.ParameterName = anonymousIndex++.ToString(CultureInfo.InvariantCulture);
+
                 return parameter;
             }
         }
@@ -659,9 +668,9 @@ namespace NotWebMatrix.Data
 
     partial class Database
     {
-        IFormatter _formatter;
+        ISqlFormatter _formatter;
 
-        internal IFormatter Formatter
+        internal ISqlFormatter Formatter
         {
             get => _formatter ?? throw new InvalidOperationException();
             set => _formatter = value;
@@ -755,23 +764,23 @@ namespace NotWebMatrix.Data
 
         public static partial class Database
         {
-            public static IDatabaseOpener Opener(string name, IFormatter formatter) =>
+            public static IDatabaseOpener Opener(string name, ISqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.Open(name)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, IFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, ISqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, IFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, ISqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerName)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, IFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, ISqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerFactory)
                                            .SettingFormatter(formatter));
 
-            public static Db SettingFormatter(this Db db, IFormatter formatter)
+            public static Db SettingFormatter(this Db db, ISqlFormatter formatter)
             {
                 db.Formatter = formatter;
                 return db;

@@ -20,23 +20,57 @@ namespace NotWebMatrix.Data.Experimental
 {
     using System;
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Data.Common;
     using System.Globalization;
     using System.Linq;
     using System.Text;
 
-    static class Sql
+    public interface ISqlFormatter
     {
-        public static (string, List<DbParameter>)
-            Format(IFormatter formatter, FormattableString fs,
-                   Func<object, DbParameter> parameterFactory)
+        (string CommandText, IReadOnlyList<DbParameter> Parameters)
+            Format(FormattableString fs, Func<object, DbParameter> parameterFactory);
+    }
+
+    static class SqlFormatter
+    {
+        public static readonly ISqlFormatter TSql = Create('@', null);
+
+        public static ISqlFormatter Create(char parameterNameStartToken) =>
+            Create(parameterNameStartToken, null);
+
+        public static ISqlFormatter Create(char parameterNameStartToken,
+                                           string? anonymousParameterPrefix) =>
+            new Formatter(parameterNameStartToken, anonymousParameterPrefix);
+
+        sealed class Formatter : ISqlFormatter
         {
-            if (formatter == null) throw new ArgumentNullException(nameof(formatter));
+            readonly char _anonymousParameterPrefix;
+            readonly string _anonymousPrefix;
+
+            public Formatter(char anonymousParameterPrefix, string? anonymousPrefix)
+            {
+                _anonymousParameterPrefix = anonymousParameterPrefix;
+                _anonymousPrefix = anonymousPrefix ?? string.Empty;
+            }
+
+            public (string CommandText, IReadOnlyList<DbParameter> Parameters)
+                Format(FormattableString fs, Func<object, DbParameter> parameterFactory) =>
+                SqlFormatter.Format(_anonymousParameterPrefix, _anonymousPrefix, fs, parameterFactory);
+        }
+
+        static (string, IReadOnlyList<DbParameter>)
+            Format(char parameterNameStartToken, string anonymousParameterPrefix,
+                   FormattableString fs, Func<object, DbParameter> parameterFactory)
+        {
             if (fs == null) throw new ArgumentNullException(nameof(fs));
+            if (parameterFactory == null) throw new ArgumentNullException(nameof(parameterFactory));
 
             var parameters = new List<DbParameter>();
+            var anonymousCount = 0;
             var text = Format(fs);
-            return (text, parameters);
+            IReadOnlyList<DbParameter> roParameters = new ReadOnlyCollection<DbParameter>(parameters);
+            return (text, roParameters);
 
             string Format(FormattableString fs)
             {
@@ -60,9 +94,11 @@ namespace NotWebMatrix.Data.Experimental
                                 if (j > 0)
                                     sb.Append(list.Separator);
                                 var parameter = parameterFactory(arg);
+                                if (string.IsNullOrEmpty(parameter.ParameterName))
+                                    parameter.ParameterName = anonymousParameterPrefix + anonymousCount++.ToString(CultureInfo.InvariantCulture);
                                 parameters.Add(parameter);
-                                var name = formatter.Named(parameter.ParameterName);
-                                sb.Append(name);
+                                sb.Append(parameterNameStartToken);
+                                sb.Append(parameter.ParameterName);
                             }
                             if (list.Values.Count > 0)
                                 sb.Append(list.After);
@@ -72,10 +108,10 @@ namespace NotWebMatrix.Data.Experimental
                         case var arg:
                         {
                             var parameter = parameterFactory(arg);
+                            if (string.IsNullOrEmpty(parameter.ParameterName))
+                                parameter.ParameterName = anonymousParameterPrefix + anonymousCount++.ToString(CultureInfo.InvariantCulture);
                             parameters.Add(parameter);
-                            //var name = formatter.Anonymous(anonymousIndex++);
-                            var name = formatter.Named(parameter.ParameterName);
-                            args[i] = name;
+                            args[i] = parameterNameStartToken + parameter.ParameterName;
                             break;
                         }
                     };
@@ -111,31 +147,5 @@ namespace NotWebMatrix.Data.Experimental
 
         public SqlFormat(FormattableString formattableString) =>
             FormattableString = formattableString;
-    }
-
-    public interface IFormatter
-    {
-        string Named(string name);
-        string Anonymous(int index);
-        string Literal(object value);
-    }
-
-    public sealed class TSqlFormatter : IFormatter
-    {
-        public static readonly IFormatter Instance = new TSqlFormatter();
-
-        public StringComparer NameComparer => StringComparer.OrdinalIgnoreCase;
-
-        public string Named(string name) => "@" + name;
-
-        public string Anonymous(int index) => "@" + index.ToString(CultureInfo.InvariantCulture);
-
-        public string Literal(object value) => value switch
-        {
-            null => "NULL",
-            int v => v.ToString(CultureInfo.InvariantCulture),
-            string s => "'" + s.Replace("'", "''") + "'",
-            _ => throw new NotSupportedException("Unsupported type: " + value.GetType())
-        };
     }
 }

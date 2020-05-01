@@ -26,24 +26,25 @@ namespace NotWebMatrix.Data.Experimental
     using System.Linq;
     using System.Text;
 
-    public interface ISqlFormatter
+    public interface IInterpolatedSqlFormatter
     {
         (string CommandText, IReadOnlyList<DbParameter> Parameters)
             Format(FormattableString fs, Func<object, DbParameter> parameterFactory);
     }
 
-    static class SqlFormatter
+    public static class InterpolatedSql
     {
-        public static readonly ISqlFormatter TSql = Create('@', null);
+        public static readonly IInterpolatedSqlFormatter TSqlFormatter = CreateFormatter('@', null);
 
-        public static ISqlFormatter Create(char parameterNameStartToken) =>
-            Create(parameterNameStartToken, null);
+        public static IInterpolatedSqlFormatter CreateFormatter(char parameterNameStartToken) =>
+            CreateFormatter(parameterNameStartToken, null);
 
-        public static ISqlFormatter Create(char parameterNameStartToken,
-                                           string? anonymousParameterPrefix) =>
+        public static IInterpolatedSqlFormatter
+            CreateFormatter(char parameterNameStartToken,
+                            string? anonymousParameterPrefix) =>
             new Formatter(parameterNameStartToken, anonymousParameterPrefix);
 
-        sealed class Formatter : ISqlFormatter
+        sealed class Formatter : IInterpolatedSqlFormatter
         {
             readonly char _anonymousParameterPrefix;
             readonly string _anonymousPrefix;
@@ -56,7 +57,7 @@ namespace NotWebMatrix.Data.Experimental
 
             public (string CommandText, IReadOnlyList<DbParameter> Parameters)
                 Format(FormattableString fs, Func<object, DbParameter> parameterFactory) =>
-                SqlFormatter.Format(_anonymousParameterPrefix, _anonymousPrefix, fs, parameterFactory);
+                InterpolatedSql.Format(_anonymousParameterPrefix, _anonymousPrefix, fs, parameterFactory);
         }
 
         static (string, IReadOnlyList<DbParameter>)
@@ -68,6 +69,7 @@ namespace NotWebMatrix.Data.Experimental
 
             var parameters = new List<DbParameter>();
             var anonymousCount = 0;
+            StringBuilder? sb = null;
             var text = Format(fs);
             IReadOnlyList<DbParameter> roParameters = new ReadOnlyCollection<DbParameter>(parameters);
             return (text, roParameters);
@@ -79,38 +81,33 @@ namespace NotWebMatrix.Data.Experimental
                 {
                     switch (fs.GetArgument(i))
                     {
-                        case SqlFormat f:
+                        case InlinePartial f:
                         {
                             args[i] = Format(f.FormattableString);
                             break;
                         }
-                        case SqlList list:
+                        case ListPartial list:
                         {
-                            var sb = new StringBuilder();
+                            sb ??= new StringBuilder();
                             if (list.Values.Count > 0)
                                 sb.Append(list.Before);
                             foreach (var (j, arg) in list.Values.Select((e, i) => (i, e)))
                             {
                                 if (j > 0)
                                     sb.Append(list.Separator);
-                                var parameter = parameterFactory(arg);
-                                if (string.IsNullOrEmpty(parameter.ParameterName))
-                                    parameter.ParameterName = anonymousParameterPrefix + anonymousCount++.ToString(CultureInfo.InvariantCulture);
-                                parameters.Add(parameter);
+                                var parameter = CreateParameter(arg);
                                 sb.Append(parameterNameStartToken);
                                 sb.Append(parameter.ParameterName);
                             }
                             if (list.Values.Count > 0)
                                 sb.Append(list.After);
                             args[i] = sb.ToString();
+                            sb.Clear();
                             break;
                         }
                         case var arg:
                         {
-                            var parameter = parameterFactory(arg);
-                            if (string.IsNullOrEmpty(parameter.ParameterName))
-                                parameter.ParameterName = anonymousParameterPrefix + anonymousCount++.ToString(CultureInfo.InvariantCulture);
-                            parameters.Add(parameter);
+                            var parameter = CreateParameter(arg);
                             args[i] = parameterNameStartToken + parameter.ParameterName;
                             break;
                         }
@@ -118,34 +115,49 @@ namespace NotWebMatrix.Data.Experimental
                 }
 
                 return string.Format(fs.Format, args);
+
+                DbParameter CreateParameter(object value)
+                {
+                    var parameter = parameterFactory(value);
+                    if (string.IsNullOrEmpty(parameter.ParameterName))
+                        parameter.ParameterName = anonymousParameterPrefix + anonymousCount++.ToString(CultureInfo.InvariantCulture);
+                    parameters.Add(parameter);
+                    return parameter;
+                }
             }
         }
-    }
 
-    public interface ISqlFormatArgument {}
+        public static IPartial List(string separator, IEnumerable<object> values, string? before = null, string? after = null) =>
+            new ListPartial(before, after, separator, values.ToArray());
 
-    public sealed class SqlList : ISqlFormatArgument
-    {
-        public string? Before    { get; }
-        public string? After     { get; }
-        public string  Separator { get; }
-        public IReadOnlyCollection<object> Values { get; }
+        public static IPartial List(string separator, params object[] values) =>
+            new ListPartial(null, null, separator, values);
 
-        public SqlList(string separator, IEnumerable<object> values, string? before = null, string? after = null) :
-            this(before, after, separator, values.ToArray()) {}
+        public static IPartial List(string? before, string? after, string separator, params object[] values) =>
+            new ListPartial(before, after, separator, values);
 
-        public SqlList(string separator, params object[] values) :
-            this(null, null, separator, values) {}
+        public static IPartial Inline(FormattableString formattableString) =>
+            new InlinePartial(formattableString);
 
-        public SqlList(string? before, string? after, string separator, params object[] values) =>
-            (Before, After, Separator, Values) = (before, after, separator, Array.AsReadOnly(values));
-    }
+        public interface IPartial {}
 
-    public sealed class SqlFormat : ISqlFormatArgument
-    {
-        public readonly FormattableString FormattableString;
+        sealed class ListPartial : IPartial
+        {
+            public string? Before    { get; }
+            public string? After     { get; }
+            public string  Separator { get; }
+            public IReadOnlyList<object> Values { get; }
 
-        public SqlFormat(FormattableString formattableString) =>
-            FormattableString = formattableString;
+            public ListPartial(string? before, string? after, string separator, params object[] values) =>
+                (Before, After, Separator, Values) = (before, after, separator, values);
+        }
+
+        sealed class InlinePartial : IPartial
+        {
+            public readonly FormattableString FormattableString;
+
+            public InlinePartial(FormattableString formattableString) =>
+                FormattableString = formattableString;
+        }
     }
 }

@@ -668,9 +668,9 @@ namespace NotWebMatrix.Data
 
     partial class Database
     {
-        ISqlFormatter _formatter;
+        IInterpolatedSqlFormatter _formatter;
 
-        internal ISqlFormatter Formatter
+        internal IInterpolatedSqlFormatter Formatter
         {
             get => _formatter ?? throw new InvalidOperationException();
             set => _formatter = value;
@@ -764,23 +764,23 @@ namespace NotWebMatrix.Data
 
         public static partial class Database
         {
-            public static IDatabaseOpener Opener(string name, ISqlFormatter formatter) =>
+            public static IDatabaseOpener Opener(string name, IInterpolatedSqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.Open(name)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, ISqlFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, IInterpolatedSqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, ISqlFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, string providerName, IInterpolatedSqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerName)
                                            .SettingFormatter(formatter));
 
-            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, ISqlFormatter formatter) =>
+            public static IDatabaseOpener ConnectionStringOpener(string connectionString, DbProviderFactory providerFactory, IInterpolatedSqlFormatter formatter) =>
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerFactory)
                                            .SettingFormatter(formatter));
 
-            public static Db SettingFormatter(this Db db, ISqlFormatter formatter)
+            public static Db SettingFormatter(this Db db, IInterpolatedSqlFormatter formatter)
             {
                 db.Formatter = formatter;
                 return db;

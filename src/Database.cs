@@ -229,7 +229,7 @@ namespace NotWebMatrix.Data
 
         internal static IEnumerable<dynamic>
             Query(Database db, CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
-            db.QueryImpl(commandText, args, options);
+            db.Query(commandText, args, options, r => r.Select());
 
         static readonly QueryOptions UnbufferedQueryOptions = QueryOptions.Default.WithUnbuffered(true);
 
@@ -239,9 +239,10 @@ namespace NotWebMatrix.Data
         public dynamic QuerySingle(string commandText, IEnumerable<object> args, QueryOptions options) =>
             QuerySingle(this, commandText, args, options.WithUnbuffered(true));
 
-        internal static dynamic
-            QuerySingle(Database db, CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
-            db.QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
+        internal static dynamic QuerySingle(Database db,
+                                            CommandText commandText, IEnumerable<object> args,
+                                            QueryOptions options) =>
+            Query(db, commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
 
         #if ASYNC_STREAMS
 
@@ -301,13 +302,9 @@ namespace NotWebMatrix.Data
                          QueryOptions options) =>
             db.Query(commandText, args, options, r => r.SelectRecords());
 
-        IEnumerable<dynamic> QueryImpl(CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
-            Query(commandText, args, options, r => r.Select());
-
-        internal IEnumerable<T>
-            Query<T>(CommandText commandText, IEnumerable<object> args,
-                     QueryOptions options,
-                     Func<IDataReader, IEnumerator<T>> selector)
+        IEnumerable<T> Query<T>(CommandText commandText, IEnumerable<object> args,
+                                QueryOptions options,
+                                Func<IDataReader, IEnumerator<T>> selector)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 

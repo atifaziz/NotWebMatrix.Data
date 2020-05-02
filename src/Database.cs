@@ -243,7 +243,7 @@ namespace NotWebMatrix.Data
             QuerySingle(Database db, CommandText commandText, IEnumerable<object> args, QueryOptions options) =>
             db.QueryImpl(commandText, args, options.WithUnbuffered(true)).FirstOrDefault();
 
-#if ASYNC_STREAMS
+        #if ASYNC_STREAMS
 
         public Task<dynamic> QuerySingleAsync(string commandText, params object[] args) =>
             QuerySingleAsync(commandText, args, QueryOptions.Default);
@@ -815,7 +815,7 @@ namespace NotWebMatrix.Data
                 Command(commandText, Db.CommandOptions.Default);
 
             public static IDatabaseCommand<DbCommand> Command(FormattableString commandText,
-                                                       Db.CommandOptions options) =>
+                                                              Db.CommandOptions options) =>
                 DbCmd.Create(db => Db.Command(db, commandText, commandText.GetArguments(), options));
 
             // Execute
@@ -824,7 +824,7 @@ namespace NotWebMatrix.Data
                 Execute(commandText, Db.CommandOptions.Default);
 
             public static IDatabaseCommand<int> Execute(FormattableString commandText,
-                                                  Db.CommandOptions options) =>
+                                                        Db.CommandOptions options) =>
                 DbCmd.Create(db => Db.Execute(db, commandText, commandText.GetArguments(), options));
 
             // Execute (async)

@@ -276,8 +276,8 @@ namespace NotWebMatrix.Data
 
             var query = QueryAsync(db, commandText, args, options);
 
-            await foreach (var item in query.ConfigureAwait(false)
-                                            .WithCancellation(cancellationToken))
+            await foreach (var item in query.WithCancellation(cancellationToken)
+                                            .ConfigureAwait(false))
             {
                 return item;
             }
@@ -987,8 +987,8 @@ namespace NotWebMatrix.Data
                 await using (db.ConfigureAwait(false))
                 {
                     await foreach (var item in command.Execute(db)
-                                                      .ConfigureAwait(false)
-                                                      .WithCancellation(cancellationToken))
+                                                      .WithCancellation(cancellationToken)
+                                                      .ConfigureAwait(false))
                     {
                         yield return item;
                     }

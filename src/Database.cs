@@ -26,6 +26,7 @@ namespace NotWebMatrix.Data
     using System.Diagnostics;
     using System.Globalization;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Threading;
     using System.Threading.Tasks;
     using Eggado;
@@ -367,12 +368,21 @@ namespace NotWebMatrix.Data
 
             Debug.Assert(selector != null);
 
-            return _(); async IAsyncEnumerable<T> _()
+            return QueryAsyncImpl(this, commandText, args, options, selector);
+        }
+
+        static async IAsyncEnumerable<T>
+            QueryAsyncImpl<T>(Database db, CommandText commandText, IEnumerable<object> args,
+                              CommandOptions options,
+                              Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector,
+                              [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await using var command = Command(db, commandText, args, options);
+            var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
+            await foreach (var item in items.WithCancellation(cancellationToken)
+                                            .ConfigureAwait(false))
             {
-                await using var command = Command(this, commandText, args, options);
-                var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
-                await foreach (var item in items.ConfigureAwait(false))
-                    yield return item;
+                yield return item;
             }
         }
 

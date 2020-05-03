@@ -269,11 +269,6 @@ namespace NotWebMatrix.Data
                              QueryOptions options,
                              CancellationToken cancellationToken)
         {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-
-            if (commandText.Formattable is null)
-                ValidatingCommandText(commandText.Literal);
-
             var query = QueryAsync(db, commandText, args, options);
 
             await foreach (var item in query.WithCancellation(cancellationToken)

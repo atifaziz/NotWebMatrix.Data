@@ -438,12 +438,16 @@ namespace NotWebMatrix.Data
             QueryValueAsync(Database db, CommandText commandText, IEnumerable<object> args,
                             CommandOptions options, CancellationToken cancellationToken)
         {
+            var command = Command(db, commandText, args, options, dontOpenConnection: true);
         #if ASYNC_DISPOSAL
-            await //...
+            await using (command.ConfigureAwait(false))
+        #else
+            using (command)
         #endif
-            using var command = Command(db, commandText, args, options, dontOpenConnection: true);
-            await db.EnsureConnectionOpenAsync(cancellationToken);
-            return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            {
+                await db.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
+                return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public T QueryValue<T>(string commandText, params object[] args) =>
@@ -535,12 +539,16 @@ namespace NotWebMatrix.Data
             ExecuteAsync(Database db, CommandText commandText, IEnumerable<object> args,
                          CommandOptions options, CancellationToken cancellationToken)
         {
+            var command = Command(db, commandText, args, options, dontOpenConnection: true);
         #if ASYNC_DISPOSAL
-            await //...
+            await using (command.ConfigureAwait(false))
+        #else
+            using (command)
         #endif
-            using var command = Command(db, commandText, args, options, dontOpenConnection: true);
-            await db.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
-            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            {
+                await db.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public dynamic GetLastInsertId() =>

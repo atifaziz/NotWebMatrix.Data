@@ -109,6 +109,22 @@ namespace NotWebMatrix.Data
                 new CommandOptions(value);
         }
 
+        void EnsureConnectionOpen()
+        {
+            if (Connection.State == ConnectionState.Open)
+                return;
+            Connection.Open();
+            ConnectionOpened?.Invoke(this, new ConnectionEventArgs(Connection));
+        }
+
+        async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken)
+        {
+            if (Connection.State == ConnectionState.Open)
+                return;
+            await Connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            ConnectionOpened?.Invoke(this, new ConnectionEventArgs(Connection));
+        }
+
         public DbCommand Command(string commandText, params object[] args) =>
             Command(commandText, args, CommandOptions.Default);
 
@@ -119,18 +135,18 @@ namespace NotWebMatrix.Data
         public DbCommand Command(string commandText, IEnumerable<object> args, CommandOptions options) =>
             Command(this, commandText, args, options);
 
-        internal static DbCommand Command(Database db, CommandText commandText, IEnumerable<object> args, CommandOptions options)
+        internal static DbCommand Command(Database db,
+                                          CommandText commandText, IEnumerable<object> args,
+                                          CommandOptions options,
+                                          bool dontOpenConnection = false)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
             if (commandText.Formattable is null)
                 ValidatingCommandText(commandText.Literal);
 
-            if (db.Connection.State != ConnectionState.Open)
-            {
-                db.Connection.Open();
-                ConnectionOpened?.Invoke(db, new ConnectionEventArgs(db.Connection));
-            }
+            if (!dontOpenConnection)
+                db.EnsureConnectionOpen();
 
             var command = db.Connection.CreateCommand();
 
@@ -372,7 +388,8 @@ namespace NotWebMatrix.Data
                               Func<DbDataReader, CancellationToken, IAsyncEnumerator<T>> selector,
                               [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await using var command = Command(db, commandText, args, options);
+            await using var command = Command(db, commandText, args, options, dontOpenConnection: true);
+            await db.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
             var items = Eggnumerable.FromAsync(ct => command.ExecuteReaderAsync(ct), selector);
             await foreach (var item in items.WithCancellation(cancellationToken)
                                             .ConfigureAwait(false))
@@ -424,7 +441,8 @@ namespace NotWebMatrix.Data
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(db, commandText, args, options);
+            using var command = Command(db, commandText, args, options, dontOpenConnection: true);
+            await db.EnsureConnectionOpenAsync(cancellationToken);
             return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -520,7 +538,8 @@ namespace NotWebMatrix.Data
         #if ASYNC_DISPOSAL
             await //...
         #endif
-            using var command = Command(db, commandText, args, options);
+            using var command = Command(db, commandText, args, options, dontOpenConnection: true);
+            await db.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

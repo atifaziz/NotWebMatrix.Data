@@ -780,7 +780,7 @@ namespace NotWebMatrix.Data
                 new DatabaseOpener(() => Db.OpenConnectionString(connectionString, providerFactory)
                                            .SettingFormatter(formatter));
 
-            public static Db SettingFormatter(this Db db, IInterpolatedSqlFormatter formatter)
+            static Db SettingFormatter(this Db db, IInterpolatedSqlFormatter formatter)
             {
                 db.Formatter = formatter;
                 return db;

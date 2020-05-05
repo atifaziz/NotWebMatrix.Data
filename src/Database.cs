@@ -920,14 +920,18 @@ namespace NotWebMatrix.Data
 
             // QueryValue (async)
 
-            // TODO overload without options
+            public static IDatabaseCommand<Task<dynamic>>
+                QueryValueAsync(FormattableString commandText) =>
+                QueryValueAsync(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<Task<dynamic>>
                 QueryValueAsync(FormattableString commandText, Db.QueryOptions options) =>
                 DbCmd.Create((db, ct) => Db.QueryValueAsync(db, commandText, commandText.GetArguments(),
                                                             options, ct));
 
-            // TODO overload without options
+            public static IDatabaseCommand<Task<T>>
+                QueryValueAsync<T>(FormattableString commandText) =>
+                QueryValueAsync<T>(commandText, Db.QueryOptions.Default);
 
             public static IDatabaseCommand<Task<T>>
                 QueryValueAsync<T>(FormattableString commandText, Db.QueryOptions options) =>

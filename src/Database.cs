@@ -842,15 +842,6 @@ namespace NotWebMatrix.Data
                     yield return item;
             }
 
-            // Command
-
-            public static IDatabaseCommand<DbCommand> Command(FormattableString commandText) =>
-                Command(commandText, Db.CommandOptions.Default);
-
-            public static IDatabaseCommand<DbCommand> Command(FormattableString commandText,
-                                                              Db.CommandOptions options) =>
-                DbCmd.Create(db => Db.Command(db, commandText, commandText.GetArguments(), options));
-
             // Execute
 
             public static IDatabaseCommand<int> Execute(FormattableString commandText) =>
@@ -880,6 +871,16 @@ namespace NotWebMatrix.Data
             public static IDatabaseCommand<IEnumerable<dynamic>>
                 Query(FormattableString commandText, Db.QueryOptions options) =>
                 DbCmd.Create(db => Db.Query(db, commandText, commandText.GetArguments(), options));
+
+            public static IDatabaseCommand<IEnumerable<T>>
+                Query<T>(FormattableString commandText,
+                         Func<DbCommand, IEnumerable<T>> selector) =>
+                Query(commandText, Db.QueryOptions.Default, selector);
+
+            public static IDatabaseCommand<IEnumerable<T>>
+                Query<T>(FormattableString commandText, Db.QueryOptions options,
+                         Func<DbCommand, IEnumerable<T>> selector) =>
+                DbCmd.Create(db => selector(Db.Command(db, commandText, commandText.GetArguments(), options)));
 
             // QueryRecords
 
@@ -961,6 +962,16 @@ namespace NotWebMatrix.Data
                 QueryAsync(FormattableString commandText, Db.QueryOptions options) =>
                 DbCmd.Create((db, ct) => Db.QueryAsync(db, commandText, commandText.GetArguments(), options)
                                            .Cancel(ct));
+
+            public static IDatabaseCommand<IAsyncEnumerable<T>>
+                QueryAsync<T>(FormattableString commandText,
+                              Func<DbCommand, IAsyncEnumerable<T>> selector) =>
+                QueryAsync(commandText, Db.QueryOptions.Default, selector);
+
+            public static IDatabaseCommand<IAsyncEnumerable<T>>
+                QueryAsync<T>(FormattableString commandText, Db.QueryOptions options,
+                              Func<DbCommand, IAsyncEnumerable<T>> selector) =>
+                DbCmd.Create((db, ct) => selector(Db.Command(db, commandText, commandText.GetArguments(), options)));
 
             // QueryRecords (async)
 

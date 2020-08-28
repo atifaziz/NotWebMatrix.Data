@@ -842,6 +842,31 @@ namespace NotWebMatrix.Data
                     yield return item;
             }
 
+            public static IDatabaseCommand<T> Execute<T>(this IDatabaseOpener dbo,
+                                                         IDatabaseCommand<T> command)
+            {
+                return DbCmd.Create((_, ct) =>
+                {
+                    using var db = dbo.Open();
+                    return command.Execute(db, ct);
+                });
+            }
+
+            public static IDatabaseCommand<Task<T>>
+                Execute<T>(this IDatabaseOpener dbo, IDatabaseCommand<Task<T>> command) =>
+                DbCmd.Create(async (_, ct) =>
+                {
+                    var db = dbo.Open();
+                #if ASYNC_DISPOSAL
+                    await using (db.ConfigureAwait(false))
+                #else
+                    using (db)
+                #endif
+                    {
+                        return await command.Execute(db, ct).ConfigureAwait(false);
+                    }
+                });
+
             // Execute
 
             public static IDatabaseCommand<int> Execute(FormattableString commandText) =>
@@ -998,6 +1023,9 @@ namespace NotWebMatrix.Data
 
             // Execute (async)
 
+            public static IDatabaseCommand<IAsyncEnumerable<T>>
+                Execute<T>(this IDatabaseOpener dbo, IDatabaseCommand<IAsyncEnumerable<T>> command) =>
+                DbCmd.Create((db, ct) => Execute(dbo, command, ct));
 
             public static IAsyncEnumerable<T>
                 Execute<T>(this IDatabaseCommand<IAsyncEnumerable<T>> command, IDatabaseOpener dbo) =>
